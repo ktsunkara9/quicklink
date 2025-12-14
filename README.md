@@ -64,3 +64,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Support
 
 For support and questions, please open an issue or contact us at support@quicklink.dev
+
+## Features
+The System is designed to support short url generation for the next 10 years
+It gets x number of requests for a second
+So max number of requests that it will handle in next 10 years are 10*365*24*60*60*x
+characters allowed in url [a-zA-Z0-9] => total chars are 62
+size of the short url 7
+Total possible combinations = 62^7 = 3.5 trillion
