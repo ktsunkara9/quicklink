@@ -409,6 +409,14 @@ This project is licensed under the MIT License.
 
 ---
 
+## 📋 TODO
+
+- [ ] Configure custom domain: `https://skt.inc` (after AWS deployment)
+- [ ] Set up DNS/Route53 for custom domain
+- [ ] Update `application.yml` with production base URL
+
+---
+
 ## 👤 Author
 
 Built as a learning project to demonstrate system design and AWS serverless architecture.
