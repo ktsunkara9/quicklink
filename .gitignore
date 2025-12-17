@@ -1,0 +1,87 @@
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.log
+*.ctxt
+.mtj.tmp/
+hs_err_pid*
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Spring Boot
+spring-boot-*.log
+application-*.yml
+application-*.properties
+
+# IDE - IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.idea_modules/
+
+# IDE - Eclipse
+.classpath
+.project
+.settings/
+bin/
+.metadata/
+
+# IDE - VS Code
+.vscode/
+*.code-workspace
+
+# Amazon Q
+.amazonq/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# AWS
+.aws-sam/
+samconfig.toml
+*.pem
+*.key
+
+# CDK (Python)
+infrastructure/.venv/
+infrastructure/__pycache__/
+infrastructure/*.egg-info/
+infrastructure/cdk.out/
+infrastructure/.pytest_cache/
+infrastructure/*.pyc
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+dist/
+build/
