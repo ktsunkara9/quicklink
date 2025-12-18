@@ -5,6 +5,39 @@ QuickLink is a **URL Shortener system** designed to demonstrate **system design 
 This repository focuses on **HLD → LLD → trade-offs**, making it suitable for **system design interviews, backend roles, and portfolio review**.
 
 
+## 🚧 Implementation Status
+
+### ✅ Completed
+- [x] Project setup (Maven, Spring Boot 3.2, Java 17)
+- [x] Health endpoint with dependency checks
+- [x] DTOs (ShortenRequest, ShortenResponse, HealthResponse)
+- [x] Domain models (UrlMapping, TokenMetadata)
+- [x] Base62 encoder/decoder utility with unit tests
+- [x] Repository pattern (UrlRepository interface + implementations)
+- [x] DynamoDB integration (Enhanced Client + standard client)
+- [x] DynamoDB configuration (DynamoDbConfig)
+- [x] UrlController (POST /shorten endpoint)
+- [x] UrlService (business logic layer)
+- [x] TokenService (ID generation with range allocation - RANGE_SIZE=100)
+- [x] TokenRepository interface (atomic increment)
+- [x] DynamoDbTokenRepository (implementation with atomic ADD)
+- [x] TokenService integrated with DynamoDB (range allocation complete)
+- [x] UrlService integrated with TokenService (distributed ID generation)
+- [x] Swagger/OpenAPI documentation
+- [x] Spring Boot DevTools for hot reload
+
+### 🔴 Pending
+- [ ] Error handling (@ControllerAdvice, custom exceptions)
+- [ ] Input validation (@Valid annotations)
+- [ ] Analytics service (@Async)
+- [ ] SQS integration
+- [ ] Unit tests (UrlService, TokenService, repositories)
+- [ ] Integration tests
+- [ ] AWS CDK infrastructure
+- [ ] Create DynamoDB tables (quicklink-urls, quicklink-tokens)
+- [ ] Deployment to AWS
+
+
 ## ✨ Features
 - **Convert long URLs into short URLs**
 - **Redirect short URLs to original URLs**
@@ -36,10 +69,11 @@ Introduces a **Token Service** to avoid collisions and reduce dependency on Redi
 ![Token Service Architecture](docs/02-tokenservice-hld.png)
 
 **Key improvements**
-- Range-based ID allocation
-- Reduced contention
-- Acceptable ID loss on service failure
-- Clear separation of responsibilities
+- Range-based ID allocation (100 IDs at a time)
+- Reduced contention on DynamoDB
+- Acceptable ID loss on Lambda termination
+- TokenService as internal service class (not separate Lambda)
+- In-memory caching for performance
 
 
 ### 3️⃣ Final Design – Serverless Architecture on AWS
@@ -58,16 +92,13 @@ Fully serverless, AWS-native architecture.
 
 ### Compute Layer
 - **URL Shortener Lambda (Spring Boot)**
+  - Single Lambda containing all services
   - Handles `POST /shorten`
   - Handles `GET /{shortCode}` redirects (301 / 302)
-  - Invokes Token Service Lambda internally
-  - Publishes analytics events asynchronously to SQS using @Async
-
-- **Token Service Lambda (Spring Boot)**
-  - Allocates unique ID ranges (10,000 IDs at a time)
+  - TokenService (in-process) allocates unique ID ranges (100 IDs at a time)
   - Uses DynamoDB atomic increment (ADD operation)
   - Caches allocated range in Lambda memory
-  - Internal-only service (not exposed via API Gateway)
+  - Publishes analytics events asynchronously to SQS using @Async
 
 ### Data Layer
 - **DynamoDB – URL Mapping Table**
@@ -125,7 +156,6 @@ Fully serverless, AWS-native architecture.
 | tokenId | String | ✅ | Counter identifier (PK) | `"global_counter"` |
 | currentRangeEnd | Number | ✅ | Last allocated ID | `1000000` |
 | lastUpdated | Number | ✅ | Last allocation timestamp | `1704067200` |
-| totalAllocated | Number | ✅ | Total IDs allocated | `1000000` |
 
 **Capacity Mode:** On-Demand  
 **Access Pattern:** Atomic increment using ADD operation
@@ -143,7 +173,11 @@ Response: 200 OK
   "status": "UP",
   "service": "quicklink-url-shortener",
   "version": "1.0.0",
-  "timestamp": 1704067200
+  "timestamp": 1704067200,
+  "checks": {
+    "dynamodb": "UP",
+    "sqs": "UP"
+  }
 }
 ```
 
@@ -161,7 +195,7 @@ Request:
 Response: 201 Created
 {
   "shortCode": "aB3xY9z",
-  "shortUrl": "https://short.link/aB3xY9z",
+  "shortUrl": "https://skt.inc/aB3xY9z",
   "longUrl": "https://example.com/very/long/url",
   "createdAt": 1704067200
 }
@@ -283,7 +317,7 @@ public class Base62Encoder {
 - **Language:** Java 17
 - **Framework:** Spring Boot 3.2
 - **Build Tool:** Maven
-- **AWS SDK:** AWS SDK for Java v2
+- **AWS SDK:** AWS SDK for Java v2 (Enhanced Client)
 
 ### Infrastructure
 - **IaC:** AWS CDK (Python)
@@ -301,12 +335,12 @@ public class Base62Encoder {
         <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
     <dependency>
-        <groupId>software.amazon.awssdk</groupId>
-        <artifactId>dynamodb</artifactId>
+        <groupId>org.springdoc</groupId>
+        <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
     </dependency>
     <dependency>
-        <groupId>software.amazon.awssdk</groupId>
-        <artifactId>sqs</artifactId>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-devtools</artifactId>
     </dependency>
 </dependencies>
 ```
@@ -318,8 +352,8 @@ public class Base62Encoder {
 ### Prerequisites
 - Java 17+
 - Maven 3.8+
-- AWS CLI configured
-- AWS CDK installed
+- AWS CLI configured (for deployment)
+- AWS CDK installed (for deployment)
 
 ### Local Development
 ```bash
@@ -335,6 +369,9 @@ mvn spring-boot:run
 
 # Test health endpoint
 curl http://localhost:8080/health
+
+# View Swagger UI
+http://localhost:8080/swagger-ui.html
 ```
 
 ### Deploy to AWS
@@ -356,6 +393,7 @@ cdk deploy
 ```
 quicklink/
 ├── README.md
+├── APPROACH.md
 ├── docs/
 │   ├── 01-loadbalancer-hld.png
 │   ├── 02-tokenservice-hld.png
@@ -363,18 +401,38 @@ quicklink/
 ├── pom.xml
 ├── src/
 │   ├── main/
-│   │   ├── java/com/quicklink/
+│   │   ├── java/inc/skt/quicklink/
 │   │   │   ├── QuickLinkApplication.java
 │   │   │   ├── config/
+│   │   │   │   └── DynamoDbConfig.java
 │   │   │   ├── controller/
-│   │   │   ├── service/
-│   │   │   ├── repository/
+│   │   │   │   ├── HealthController.java
+│   │   │   │   └── UrlController.java
+│   │   │   ├── dto/
+│   │   │   │   ├── HealthResponse.java
+│   │   │   │   ├── ShortenRequest.java
+│   │   │   │   └── ShortenResponse.java
 │   │   │   ├── model/
+│   │   │   │   ├── UrlMapping.java
+│   │   │   │   └── TokenMetadata.java
+│   │   │   ├── repository/
+│   │   │   │   ├── UrlRepository.java
+│   │   │   │   ├── InMemoryUrlRepository.java
+│   │   │   │   ├── DynamoDbUrlRepository.java
+│   │   │   │   ├── TokenRepository.java
+│   │   │   │   └── DynamoDbTokenRepository.java
+│   │   │   ├── service/
+│   │   │   │   ├── UrlService.java
+│   │   │   │   └── TokenService.java
 │   │   │   └── util/
+│   │   │       └── Base62Encoder.java
 │   │   └── resources/
 │   │       └── application.yml
 │   └── test/
-└── infrastructure/  # AWS CDK
+│       └── java/inc/skt/quicklink/
+│           └── util/
+│               └── Base62EncoderTest.java
+└── infrastructure/  # AWS CDK (pending)
 ```
 
 ---
@@ -411,9 +469,23 @@ This project is licensed under the MIT License.
 
 ## 📋 TODO
 
-- [ ] Configure custom domain: `https://skt.inc` (after AWS deployment)
-- [ ] Set up DNS/Route53 for custom domain
-- [ ] Update `application.yml` with production base URL
+### High Priority
+- [ ] Add input validation (@Valid, custom validators)
+- [ ] Add error handling (@ControllerAdvice)
+
+### Medium Priority
+- [ ] Add unit tests (UrlService, TokenService, Base62Encoder)
+- [ ] Add integration tests
+- [ ] Create DynamoDB tables (manual or CDK)
+- [ ] Test end-to-end locally with DynamoDB Local
+
+### Low Priority
+- [ ] Analytics service (@Async)
+- [ ] SQS integration
+- [ ] Set up AWS CDK infrastructure
+- [ ] Configure custom domain: `https://skt.inc`
+- [ ] Deploy to AWS Lambda
+- [ ] Performance testing and optimization
 
 ---
 

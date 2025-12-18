@@ -168,7 +168,11 @@ public int hashCode() {
 ---
 
 ### Phase 3: Service Layer (UPCOMING)
-- [ ] TokenService (ID generation)
+- [ ] TokenService (ID generation with range allocation)
+  - In-process service (not separate Lambda)
+  - Allocates ranges of 100 IDs from DynamoDB
+  - Caches range in memory for performance
+  - Uses DynamoDB atomic ADD operation
 - [ ] UrlService (business logic)
 - [ ] Async analytics (SQS integration)
 
@@ -309,12 +313,54 @@ Result (reversed): "21" → Padded: "0000021"
 ## Next Steps
 
 1. Implement InMemoryUrlRepository for local testing
-2. Create TokenService for ID generation
+2. Create TokenService for ID generation (in-process, not separate Lambda)
 3. Build UrlService with business logic
 4. Add UrlController for REST endpoints
 5. Test locally with in-memory storage
 6. Integrate DynamoDB after AWS deployment
 7. Configure custom domain (skt.inc)
+
+---
+
+## Architecture Decision: Single Lambda vs Separate Lambdas
+
+### Decision: Use Single Lambda with Multiple Services ✅
+
+**Rationale:**
+- **Performance**: No Lambda-to-Lambda invocation latency (50-100ms saved)
+- **Cost**: No additional Lambda invocation charges
+- **Simplicity**: Easier deployment and debugging
+- **Caching**: TokenService range caching works optimally in single Lambda
+- **Industry Standard**: Most URL shorteners use single service architecture
+
+**Architecture:**
+```
+API Gateway
+    ↓
+┌─────────────────────────────────┐
+│  Lambda: URL Shortener          │
+│  ├─ UrlController               │
+│  ├─ UrlService                  │
+│  ├─ TokenService (in-process)   │
+│  └─ Repositories                │
+└─────────┬───────────────────────┘
+          ↓
+    DynamoDB (both tables)
+```
+
+**Trade-offs:**
+- ✅ Lower latency (in-memory method calls)
+- ✅ Lower cost (fewer Lambda invocations)
+- ✅ Simpler infrastructure
+- ✅ Better caching efficiency
+- ⚠️ Larger Lambda package size (acceptable)
+- ⚠️ Can't scale TokenService independently (not needed at our scale)
+
+**Alternative Considered:** Separate Lambda for TokenService
+- Would add 50-100ms latency per request
+- Would increase cost by $0.20 per million requests
+- Would complicate range caching (different Lambda instances)
+- Rejected as over-engineering for this use case
 
 ---
 

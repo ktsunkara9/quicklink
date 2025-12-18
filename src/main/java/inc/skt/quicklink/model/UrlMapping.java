@@ -1,9 +1,13 @@
 package inc.skt.quicklink.model;
 
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
+
 /**
  * Domain model representing a URL mapping entry in DynamoDB.
  * Maps to the 'quicklink-urls' table.
  */
+@DynamoDbBean
 public class UrlMapping {
     
     private String shortCode;      // Primary Key - 7-char base62 code
@@ -30,6 +34,7 @@ public class UrlMapping {
         this.clickCount = clickCount;
     }
     
+    @DynamoDbPartitionKey
     public String getShortCode() {
         return shortCode;
     }
