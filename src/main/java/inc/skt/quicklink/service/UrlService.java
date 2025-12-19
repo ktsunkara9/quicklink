@@ -28,10 +28,28 @@ public class UrlService {
     
     /**
      * Creates a short URL from a long URL.
+     * If customAlias is provided, uses it as the short code.
+     * Otherwise, auto-generates a short code using TokenService.
      */
     public ShortenResponse createShortUrl(ShortenRequest request) {
-        long id = tokenService.getNextId();
-        String shortCode = Base62Encoder.encode(id);
+        String shortCode;
+        
+        // Check if customAlias is provided
+        if (request.getCustomAlias() != null && !request.getCustomAlias().isEmpty()) {
+            shortCode = request.getCustomAlias();
+            
+            // Check if customAlias already exists
+            if (urlRepository.existsByShortCode(shortCode)) {
+                throw new IllegalArgumentException(
+                    "Custom alias '" + shortCode + "' is already in use"
+                );
+            }
+        } else {
+            // Auto-generate short code
+            long id = tokenService.getNextId();
+            shortCode = Base62Encoder.encode(id);
+        }
+        
         long now = System.currentTimeMillis() / 1000;
         
         UrlMapping mapping = new UrlMapping(
