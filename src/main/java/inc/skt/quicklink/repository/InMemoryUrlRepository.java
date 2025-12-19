@@ -1,6 +1,7 @@
 package inc.skt.quicklink.repository;
 
 import inc.skt.quicklink.model.UrlMapping;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import java.util.Map;
 import java.util.Optional;
@@ -12,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Thread-safe for concurrent access.
  */
 @Repository
+@Profile({"default", "local", "test"})
 public class InMemoryUrlRepository implements UrlRepository {
     
     private final Map<String, UrlMapping> storage = new ConcurrentHashMap<>();

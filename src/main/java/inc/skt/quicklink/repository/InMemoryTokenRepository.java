@@ -1,5 +1,6 @@
 package inc.skt.quicklink.repository;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -9,6 +10,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * Thread-safe for concurrent access.
  */
 @Repository
+@Profile({"default", "local", "test"})
 public class InMemoryTokenRepository implements TokenRepository {
     
     private final AtomicLong counter = new AtomicLong(0);

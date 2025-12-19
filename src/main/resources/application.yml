@@ -1,17 +1,11 @@
 spring:
   application:
     name: quicklink
+  profiles:
+    active: local
 
 server:
   port: 8080
-
-aws:
-  region: us-east-1
-
-dynamodb:
-  table:
-    urls: quicklink-urls
-    tokens: quicklink-tokens
 
 app:
   short-domain: https://skt.inc

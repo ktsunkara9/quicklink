@@ -2,7 +2,7 @@ package inc.skt.quicklink.repository;
 
 import inc.skt.quicklink.model.UrlMapping;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
@@ -16,7 +16,7 @@ import java.util.Optional;
  * Provides CRUD operations for URL mappings in DynamoDB.
  */
 @Repository
-@Primary
+@Profile({"prod", "aws"})
 public class DynamoDbUrlRepository implements UrlRepository {
     
     private final DynamoDbTable<UrlMapping> table;

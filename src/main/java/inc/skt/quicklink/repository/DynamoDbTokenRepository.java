@@ -1,6 +1,7 @@
 package inc.skt.quicklink.repository;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
@@ -16,6 +17,7 @@ import java.util.Map;
  * Provides thread-safe, distributed counter for ID generation.
  */
 @Repository
+@Profile({"prod", "aws"})
 public class DynamoDbTokenRepository implements TokenRepository {
     
     private final DynamoDbClient dynamoDbClient;
