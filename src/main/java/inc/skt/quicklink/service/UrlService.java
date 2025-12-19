@@ -36,12 +36,12 @@ public class UrlService {
         
         UrlMapping mapping = new UrlMapping(
             shortCode,
-            request.url(),
+            request.getUrl(),
             now,
             "anonymous",
             true,
             null,
-            request.customAlias() != null,
+            request.getCustomAlias() != null,
             0L
         );
         
@@ -50,7 +50,7 @@ public class UrlService {
         return new ShortenResponse(
             shortCode,
             shortDomain + "/" + shortCode,
-            request.url(),
+            request.getUrl(),
             now
         );
     }
