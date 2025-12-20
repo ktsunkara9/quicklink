@@ -47,7 +47,7 @@ class UrlControllerTest {
         when(urlService.createShortUrl(any(ShortenRequest.class))).thenReturn(response);
 
         // When & Then
-        mockMvc.perform(post("/shorten")
+        mockMvc.perform(post("/api/v1/shorten")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
@@ -72,7 +72,7 @@ class UrlControllerTest {
         when(urlService.createShortUrl(any(ShortenRequest.class))).thenReturn(response);
 
         // When & Then
-        mockMvc.perform(post("/shorten")
+        mockMvc.perform(post("/api/v1/shorten")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
@@ -94,7 +94,7 @@ class UrlControllerTest {
         when(urlService.createShortUrl(any(ShortenRequest.class))).thenReturn(response);
 
         // When & Then
-        mockMvc.perform(post("/shorten")
+        mockMvc.perform(post("/api/v1/shorten")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
@@ -111,7 +111,7 @@ class UrlControllerTest {
             .thenThrow(new InvalidUrlException("URL cannot be empty"));
 
         // When & Then
-        mockMvc.perform(post("/shorten")
+        mockMvc.perform(post("/api/v1/shorten")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest())
@@ -127,7 +127,7 @@ class UrlControllerTest {
             .thenThrow(new InvalidAliasException("Custom alias must be at least 3 characters"));
 
         // When & Then
-        mockMvc.perform(post("/shorten")
+        mockMvc.perform(post("/api/v1/shorten")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest())
@@ -143,7 +143,7 @@ class UrlControllerTest {
             .thenThrow(new AliasAlreadyExistsException("Custom alias 'mylink' is already in use"));
 
         // When & Then
-        mockMvc.perform(post("/shorten")
+        mockMvc.perform(post("/api/v1/shorten")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isConflict())
@@ -157,7 +157,7 @@ class UrlControllerTest {
         String malformedJson = "{\"url\": \"https://example.com\", invalid}";
 
         // When & Then
-        mockMvc.perform(post("/shorten")
+        mockMvc.perform(post("/api/v1/shorten")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(malformedJson))
             .andExpect(status().isBadRequest())
@@ -171,7 +171,7 @@ class UrlControllerTest {
         ShortenRequest request = new ShortenRequest("https://example.com", null);
 
         // When & Then
-        mockMvc.perform(post("/shorten")
+        mockMvc.perform(post("/api/v1/shorten")
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isUnsupportedMediaType());
     }
@@ -179,7 +179,7 @@ class UrlControllerTest {
     @Test
     void should_return400BadRequest_when_emptyRequestBody() throws Exception {
         // When & Then
-        mockMvc.perform(post("/shorten")
+        mockMvc.perform(post("/api/v1/shorten")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
             .andExpect(status().isBadRequest());
@@ -201,7 +201,7 @@ class UrlControllerTest {
         when(urlService.createShortUrl(any(ShortenRequest.class))).thenReturn(response);
 
         // When & Then
-        mockMvc.perform(post("/shorten")
+        mockMvc.perform(post("/api/v1/shorten")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
@@ -217,7 +217,7 @@ class UrlControllerTest {
             .thenThrow(new RuntimeException("Unexpected error"));
 
         // When & Then
-        mockMvc.perform(post("/shorten")
+        mockMvc.perform(post("/api/v1/shorten")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isInternalServerError())
@@ -239,7 +239,7 @@ class UrlControllerTest {
         when(urlService.createShortUrl(any(ShortenRequest.class))).thenReturn(response);
 
         // When & Then
-        mockMvc.perform(post("/shorten")
+        mockMvc.perform(post("/api/v1/shorten")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())

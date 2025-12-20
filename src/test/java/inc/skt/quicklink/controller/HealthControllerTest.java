@@ -20,14 +20,14 @@ class HealthControllerTest {
     @Test
     void should_return200OK_when_healthEndpointCalled() throws Exception {
         // When & Then
-        mockMvc.perform(get("/health"))
+        mockMvc.perform(get("/api/v1/health"))
             .andExpect(status().isOk());
     }
 
     @Test
     void should_returnJsonResponse_when_healthEndpointCalled() throws Exception {
         // When & Then
-        mockMvc.perform(get("/health"))
+        mockMvc.perform(get("/api/v1/health"))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
@@ -35,7 +35,7 @@ class HealthControllerTest {
     @Test
     void should_returnCorrectHealthStatus_when_healthEndpointCalled() throws Exception {
         // When & Then
-        mockMvc.perform(get("/health"))
+        mockMvc.perform(get("/api/v1/health"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("UP"))
             .andExpect(jsonPath("$.service").value("quicklink"))
@@ -46,7 +46,7 @@ class HealthControllerTest {
     @Test
     void should_returnDependencyChecks_when_healthEndpointCalled() throws Exception {
         // When & Then
-        mockMvc.perform(get("/health"))
+        mockMvc.perform(get("/api/v1/health"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.checks").exists())
             .andExpect(jsonPath("$.checks.dynamodb").value("UP"))
@@ -56,7 +56,7 @@ class HealthControllerTest {
     @Test
     void should_returnAllRequiredFields_when_healthEndpointCalled() throws Exception {
         // When & Then
-        mockMvc.perform(get("/health"))
+        mockMvc.perform(get("/api/v1/health"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").exists())
             .andExpect(jsonPath("$.service").exists())
@@ -70,21 +70,21 @@ class HealthControllerTest {
     @Test
     void should_return405MethodNotAllowed_when_postMethodUsed() throws Exception {
         // When & Then
-        mockMvc.perform(post("/health"))
+        mockMvc.perform(post("/api/v1/health"))
             .andExpect(status().isMethodNotAllowed());
     }
 
     @Test
     void should_return405MethodNotAllowed_when_putMethodUsed() throws Exception {
         // When & Then
-        mockMvc.perform(put("/health"))
+        mockMvc.perform(put("/api/v1/health"))
             .andExpect(status().isMethodNotAllowed());
     }
 
     @Test
     void should_return405MethodNotAllowed_when_deleteMethodUsed() throws Exception {
         // When & Then
-        mockMvc.perform(delete("/health"))
+        mockMvc.perform(delete("/api/v1/health"))
             .andExpect(status().isMethodNotAllowed());
     }
 
@@ -96,7 +96,7 @@ class HealthControllerTest {
         long beforeCall = System.currentTimeMillis() / 1000;
 
         // When & Then
-        mockMvc.perform(get("/health"))
+        mockMvc.perform(get("/api/v1/health"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.timestamp").isNumber())
             .andExpect(result -> {
@@ -114,7 +114,7 @@ class HealthControllerTest {
     void should_returnConsistentResponse_when_calledMultipleTimes() throws Exception {
         // When & Then - Call multiple times
         for (int i = 0; i < 3; i++) {
-            mockMvc.perform(get("/health"))
+            mockMvc.perform(get("/api/v1/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"))
                 .andExpect(jsonPath("$.service").value("quicklink"))
