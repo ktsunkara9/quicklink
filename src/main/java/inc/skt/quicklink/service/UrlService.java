@@ -2,6 +2,9 @@ package inc.skt.quicklink.service;
 
 import inc.skt.quicklink.dto.ShortenRequest;
 import inc.skt.quicklink.dto.ShortenResponse;
+import inc.skt.quicklink.exception.AliasAlreadyExistsException;
+import inc.skt.quicklink.exception.InvalidAliasException;
+import inc.skt.quicklink.exception.InvalidUrlException;
 import inc.skt.quicklink.model.UrlMapping;
 import inc.skt.quicklink.repository.UrlRepository;
 import inc.skt.quicklink.util.Base62Encoder;
@@ -32,20 +35,26 @@ public class UrlService {
      * Otherwise, auto-generates a short code using TokenService.
      */
     public ShortenResponse createShortUrl(ShortenRequest request) {
+        // Fail-fast: Validate URL first (before any expensive operations)
+        validateUrl(request.getUrl());
+        
         String shortCode;
         
         // Check if customAlias is provided
         if (request.getCustomAlias() != null && !request.getCustomAlias().isEmpty()) {
+            // Fail-fast: Validate customAlias format
+            validateCustomAlias(request.getCustomAlias());
+            
             shortCode = request.getCustomAlias();
             
-            // Check if customAlias already exists
+            // Check if customAlias already exists (after format validation)
             if (urlRepository.existsByShortCode(shortCode)) {
-                throw new IllegalArgumentException(
+                throw new AliasAlreadyExistsException(
                     "Custom alias '" + shortCode + "' is already in use"
                 );
             }
         } else {
-            // Auto-generate short code
+            // Auto-generate short code (only after URL validation passes)
             long id = tokenService.getNextId();
             shortCode = Base62Encoder.encode(id);
         }
@@ -71,5 +80,76 @@ public class UrlService {
             request.getUrl(),
             now
         );
+    }
+    
+    /**
+     * Validates URL format and constraints.
+     * Fail-fast validation - throws exception immediately if invalid.
+     */
+    private void validateUrl(String url) {
+        // Check 1: Null or empty
+        if (url == null || url.trim().isEmpty()) {
+            throw new InvalidUrlException("URL cannot be empty");
+        }
+        
+        // Check 2: Length constraint
+        if (url.length() > 2048) {
+            throw new InvalidUrlException("URL exceeds maximum length of 2048 characters");
+        }
+        
+        // Check 3: Format validation (must start with http:// or https://)
+        if (!url.matches("^https?://.*")) {
+            throw new InvalidUrlException("URL must start with http:// or https://");
+        }
+        
+        // Check 4: Self-referencing URL (prevent shortening our own short URLs)
+        if (url.toLowerCase().contains(shortDomain.toLowerCase().replace("https://", "").replace("http://", ""))) {
+            throw new InvalidUrlException("Cannot shorten URLs from this domain");
+        }
+        
+        // Check 5: Localhost and private IPs (security risk)
+        if (url.matches("^https?://(localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0|10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.).*")) {
+            throw new InvalidUrlException("Cannot shorten localhost or private network URLs");
+        }
+    }
+    
+    /**
+     * Validates custom alias format and constraints.
+     * Fail-fast validation - throws exception immediately if invalid.
+     */
+    private void validateCustomAlias(String alias) {
+        // Check 1: Length constraints
+        if (alias.length() < 3) {
+            throw new InvalidAliasException("Custom alias must be at least 3 characters");
+        }
+        if (alias.length() > 20) {
+            throw new InvalidAliasException("Custom alias cannot exceed 20 characters");
+        }
+        
+        // Check 2: Character validation (alphanumeric and hyphens only)
+        if (!alias.matches("^[a-zA-Z0-9-]+$")) {
+            throw new InvalidAliasException(
+                "Custom alias can only contain letters, numbers, and hyphens"
+            );
+        }
+        
+        // Check 3: Reserved keywords (system endpoints)
+        if (isReservedKeyword(alias)) {
+            throw new InvalidAliasException(
+                "Custom alias '" + alias + "' is a reserved keyword"
+            );
+        }
+    }
+    
+    /**
+     * Checks if alias is a reserved system keyword.
+     */
+    private boolean isReservedKeyword(String alias) {
+        String lowerAlias = alias.toLowerCase();
+        return lowerAlias.equals("shorten") || 
+               lowerAlias.equals("health") || 
+               lowerAlias.equals("stats") || 
+               lowerAlias.equals("api") || 
+               lowerAlias.equals("admin");
     }
 }

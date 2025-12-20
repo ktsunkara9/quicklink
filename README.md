@@ -10,25 +10,28 @@ This repository focuses on **HLD → LLD → trade-offs**, making it suitable fo
 ### ✅ Completed
 - [x] Project setup (Maven, Spring Boot 3.2, Java 17)
 - [x] Health endpoint with dependency checks
-- [x] DTOs (ShortenRequest, ShortenResponse, HealthResponse)
+- [x] DTOs (ShortenRequest, ShortenResponse, HealthResponse, ErrorResponse)
 - [x] Domain models (UrlMapping, TokenMetadata)
 - [x] Base62 encoder/decoder utility with unit tests
 - [x] Repository pattern (UrlRepository interface + implementations)
 - [x] DynamoDB integration (Enhanced Client + standard client)
 - [x] DynamoDB configuration (DynamoDbConfig)
+- [x] Spring Profiles (local, test, prod) with environment-specific beans
 - [x] UrlController (POST /shorten endpoint)
-- [x] UrlService (business logic layer)
+- [x] UrlService (business logic layer with fail-fast validations)
 - [x] TokenService (ID generation with range allocation - RANGE_SIZE=100)
 - [x] TokenRepository interface (atomic increment)
 - [x] DynamoDbTokenRepository (implementation with atomic ADD)
 - [x] TokenService integrated with DynamoDB (range allocation complete)
 - [x] UrlService integrated with TokenService (distributed ID generation)
+- [x] Custom exception classes (InvalidUrlException, InvalidAliasException, AliasAlreadyExistsException, UrlNotFoundException, UrlExpiredException)
+- [x] Global exception handler (@RestControllerAdvice with proper HTTP status mapping)
+- [x] Input validation (fail-fast validations: URL format, length, self-referencing, localhost/private IPs, custom alias format, reserved keywords, uniqueness check)
 - [x] Swagger/OpenAPI documentation
 - [x] Spring Boot DevTools for hot reload
 
 ### 🔴 Pending
-- [ ] Error handling (@ControllerAdvice, custom exceptions)
-- [ ] Input validation (@Valid annotations)
+- [ ] GET /{shortCode} redirect endpoint
 - [ ] Analytics service (@Async)
 - [ ] SQS integration
 - [ ] Unit tests (UrlService, TokenService, repositories)
@@ -409,9 +412,17 @@ quicklink/
 │   │   │   │   ├── HealthController.java
 │   │   │   │   └── UrlController.java
 │   │   │   ├── dto/
+│   │   │   │   ├── ErrorResponse.java
 │   │   │   │   ├── HealthResponse.java
 │   │   │   │   ├── ShortenRequest.java
 │   │   │   │   └── ShortenResponse.java
+│   │   │   ├── exception/
+│   │   │   │   ├── AliasAlreadyExistsException.java
+│   │   │   │   ├── GlobalExceptionHandler.java
+│   │   │   │   ├── InvalidAliasException.java
+│   │   │   │   ├── InvalidUrlException.java
+│   │   │   │   ├── UrlExpiredException.java
+│   │   │   │   └── UrlNotFoundException.java
 │   │   │   ├── model/
 │   │   │   │   ├── UrlMapping.java
 │   │   │   │   └── TokenMetadata.java
@@ -470,8 +481,8 @@ This project is licensed under the MIT License.
 ## 📋 TODO
 
 ### High Priority
-- [ ] Add input validation (@Valid, custom validators)
-- [ ] Add error handling (@ControllerAdvice)
+- [ ] Implement GET /{shortCode} redirect endpoint
+- [ ] Add redirect logic with expiry and active status checks
 
 ### Medium Priority
 - [ ] Add unit tests (UrlService, TokenService, Base62Encoder)
