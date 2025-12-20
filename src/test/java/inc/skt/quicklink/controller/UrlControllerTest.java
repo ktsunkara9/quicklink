@@ -5,6 +5,9 @@ import inc.skt.quicklink.dto.ShortenResponse;
 import inc.skt.quicklink.exception.AliasAlreadyExistsException;
 import inc.skt.quicklink.exception.InvalidAliasException;
 import inc.skt.quicklink.exception.InvalidUrlException;
+import inc.skt.quicklink.exception.UrlExpiredException;
+import inc.skt.quicklink.exception.UrlNotFoundException;
+import inc.skt.quicklink.model.UrlMapping;
 import inc.skt.quicklink.service.UrlService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -16,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -244,5 +248,67 @@ class UrlControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    // ========== Redirect Endpoint Tests ==========
+
+    @Test
+    void should_return301Redirect_when_validShortCodeProvided() throws Exception {
+        // Given
+        UrlMapping urlMapping = new UrlMapping(
+            "abc1234",
+            "https://example.com/original",
+            1704067200L,
+            "anonymous",
+            true,
+            null,
+            false,
+            0L
+        );
+        when(urlService.getOriginalUrl("abc1234")).thenReturn(urlMapping);
+
+        // When & Then
+        mockMvc.perform(get("/abc1234"))
+            .andExpect(status().isMovedPermanently())
+            .andExpect(header().string("Location", "https://example.com/original"));
+    }
+
+    @Test
+    void should_return404NotFound_when_shortCodeDoesNotExist() throws Exception {
+        // Given
+        when(urlService.getOriginalUrl("invalid"))
+            .thenThrow(new UrlNotFoundException("Short URL not found: invalid"));
+
+        // When & Then
+        mockMvc.perform(get("/invalid"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Short URL not found: invalid"))
+            .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    void should_return410Gone_when_urlIsInactive() throws Exception {
+        // Given
+        when(urlService.getOriginalUrl("inactive"))
+            .thenThrow(new UrlExpiredException("This short URL has been deactivated"));
+
+        // When & Then
+        mockMvc.perform(get("/inactive"))
+            .andExpect(status().isGone())
+            .andExpect(jsonPath("$.message").value("This short URL has been deactivated"))
+            .andExpect(jsonPath("$.status").value(410));
+    }
+
+    @Test
+    void should_return410Gone_when_urlIsExpired() throws Exception {
+        // Given
+        when(urlService.getOriginalUrl("expired"))
+            .thenThrow(new UrlExpiredException("This short URL has expired"));
+
+        // When & Then
+        mockMvc.perform(get("/expired"))
+            .andExpect(status().isGone())
+            .andExpect(jsonPath("$.message").value("This short URL has expired"))
+            .andExpect(jsonPath("$.status").value(410));
     }
 }

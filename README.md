@@ -9,7 +9,7 @@ This repository focuses on **HLD → LLD → trade-offs**, making it suitable fo
 
 ### ✅ Completed
 - [x] Project setup (Maven, Spring Boot 3.2, Java 17)
-- [x] Health endpoint with dependency checks
+- [x] Health endpoint with dependency checks (GET /api/v1/health)
 - [x] DTOs (ShortenRequest, ShortenResponse, HealthResponse, ErrorResponse)
 - [x] Domain models (UrlMapping, TokenMetadata)
 - [x] Base62 encoder/decoder utility with unit tests
@@ -17,7 +17,7 @@ This repository focuses on **HLD → LLD → trade-offs**, making it suitable fo
 - [x] DynamoDB integration (Enhanced Client + standard client)
 - [x] DynamoDB configuration (DynamoDbConfig)
 - [x] Spring Profiles (local, test, prod) with environment-specific beans
-- [x] UrlController (POST /shorten endpoint)
+- [x] UrlController (POST /api/v1/shorten endpoint)
 - [x] UrlService (business logic layer with fail-fast validations)
 - [x] TokenService (ID generation with range allocation - RANGE_SIZE=100)
 - [x] TokenRepository interface (atomic increment)
@@ -29,16 +29,17 @@ This repository focuses on **HLD → LLD → trade-offs**, making it suitable fo
 - [x] Input validation (fail-fast validations: URL format, length, self-referencing, localhost/private IPs, custom alias format, reserved keywords, uniqueness check)
 - [x] Custom expiry feature (1-365 days, optional)
 - [x] Logging (SLF4J) in service layer and exception handler
+- [x] GET /{shortCode} redirect endpoint (301 redirect with expiry and active status checks)
+- [x] Hybrid API versioning (management endpoints versioned, redirect endpoint clean)
 - [x] Unit tests - UrlService (19 tests)
 - [x] Unit tests - TokenService (10 tests)
-- [x] Unit tests - UrlController (12 tests)
+- [x] Unit tests - UrlController (16 tests - includes redirect endpoint tests)
 - [x] Unit tests - HealthController (10 tests)
 - [x] Unit tests - Base62Encoder (comprehensive coverage)
 - [x] Swagger/OpenAPI documentation
 - [x] Spring Boot DevTools for hot reload
 
 ### 🔴 Pending
-- [ ] GET /{shortCode} redirect endpoint
 - [ ] Analytics service (@Async)
 - [ ] SQS integration
 - [ ] Integration tests
@@ -175,12 +176,12 @@ Fully serverless, AWS-native architecture.
 
 ### 1. Health Check
 ```http
-GET /health
+GET /api/v1/health
 
 Response: 200 OK
 {
   "status": "UP",
-  "service": "quicklink-url-shortener",
+  "service": "quicklink",
   "version": "1.0.0",
   "timestamp": 1704067200,
   "checks": {
@@ -192,7 +193,7 @@ Response: 200 OK
 
 ### 2. Create Short URL
 ```http
-POST /shorten
+POST /api/v1/shorten
 Content-Type: application/json
 
 Request:
@@ -220,9 +221,9 @@ Response: 301 Moved Permanently
 Location: https://example.com/very/long/url
 ```
 
-### 4. Get URL Statistics (Optional)
+### 4. Get URL Statistics (Future)
 ```http
-GET /stats/{shortCode}
+GET /api/v1/stats/{shortCode}
 
 Response: 200 OK
 {
@@ -379,7 +380,7 @@ mvn clean install
 mvn spring-boot:run
 
 # Test health endpoint
-curl http://localhost:8080/health
+curl http://localhost:8080/api/v1/health
 
 # View Swagger UI
 http://localhost:8080/swagger-ui.html
@@ -495,18 +496,16 @@ This project is licensed under the MIT License.
 ## 📋 TODO
 
 ### High Priority
-- [ ] Implement GET /{shortCode} redirect endpoint
-- [ ] Add redirect logic with expiry and active status checks
-
-### Medium Priority
 - [ ] Add integration tests (full stack testing)
 - [ ] Create DynamoDB tables (manual or CDK)
 - [ ] Test end-to-end locally with DynamoDB Local
 
-### Low Priority
+### Medium Priority
 - [ ] Analytics service (@Async)
 - [ ] SQS integration
 - [ ] Set up AWS CDK infrastructure
+
+### Low Priority
 - [ ] Configure custom domain: `https://skt.inc`
 - [ ] Deploy to AWS Lambda
 - [ ] Performance testing and optimization
