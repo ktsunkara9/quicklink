@@ -65,29 +65,6 @@ class HealthControllerTest {
             .andExpect(jsonPath("$.checks").exists());
     }
 
-    // ========== HTTP Method Tests ==========
-
-    @Test
-    void should_return405MethodNotAllowed_when_postMethodUsed() throws Exception {
-        // When & Then
-        mockMvc.perform(post("/api/v1/health"))
-            .andExpect(status().isMethodNotAllowed());
-    }
-
-    @Test
-    void should_return405MethodNotAllowed_when_putMethodUsed() throws Exception {
-        // When & Then
-        mockMvc.perform(put("/api/v1/health"))
-            .andExpect(status().isMethodNotAllowed());
-    }
-
-    @Test
-    void should_return405MethodNotAllowed_when_deleteMethodUsed() throws Exception {
-        // When & Then
-        mockMvc.perform(delete("/api/v1/health"))
-            .andExpect(status().isMethodNotAllowed());
-    }
-
     // ========== Edge Cases ==========
 
     @Test

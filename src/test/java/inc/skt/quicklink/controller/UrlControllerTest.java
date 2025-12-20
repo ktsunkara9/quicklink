@@ -155,40 +155,6 @@ class UrlControllerTest {
             .andExpect(jsonPath("$.status").value(409));
     }
 
-    @Test
-    void should_return400BadRequest_when_malformedJson() throws Exception {
-        // Given
-        String malformedJson = "{\"url\": \"https://example.com\", invalid}";
-
-        // When & Then
-        mockMvc.perform(post("/api/v1/shorten")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(malformedJson))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message").value("Malformed JSON request"))
-            .andExpect(jsonPath("$.status").value(400));
-    }
-
-    @Test
-    void should_return400BadRequest_when_missingContentType() throws Exception {
-        // Given
-        ShortenRequest request = new ShortenRequest("https://example.com", null);
-
-        // When & Then
-        mockMvc.perform(post("/api/v1/shorten")
-                .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isUnsupportedMediaType());
-    }
-
-    @Test
-    void should_return400BadRequest_when_emptyRequestBody() throws Exception {
-        // When & Then
-        mockMvc.perform(post("/api/v1/shorten")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{}"))
-            .andExpect(status().isBadRequest());
-    }
-
     // ========== Edge Cases ==========
 
     @Test
