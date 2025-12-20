@@ -27,6 +27,13 @@ This repository focuses on **HLD → LLD → trade-offs**, making it suitable fo
 - [x] Custom exception classes (InvalidUrlException, InvalidAliasException, AliasAlreadyExistsException, UrlNotFoundException, UrlExpiredException)
 - [x] Global exception handler (@RestControllerAdvice with proper HTTP status mapping)
 - [x] Input validation (fail-fast validations: URL format, length, self-referencing, localhost/private IPs, custom alias format, reserved keywords, uniqueness check)
+- [x] Custom expiry feature (1-365 days, optional)
+- [x] Logging (SLF4J) in service layer and exception handler
+- [x] Unit tests - UrlService (19 tests)
+- [x] Unit tests - TokenService (10 tests)
+- [x] Unit tests - UrlController (12 tests)
+- [x] Unit tests - HealthController (10 tests)
+- [x] Unit tests - Base62Encoder (comprehensive coverage)
 - [x] Swagger/OpenAPI documentation
 - [x] Spring Boot DevTools for hot reload
 
@@ -34,7 +41,6 @@ This repository focuses on **HLD → LLD → trade-offs**, making it suitable fo
 - [ ] GET /{shortCode} redirect endpoint
 - [ ] Analytics service (@Async)
 - [ ] SQS integration
-- [ ] Unit tests (UrlService, TokenService, repositories)
 - [ ] Integration tests
 - [ ] AWS CDK infrastructure
 - [ ] Create DynamoDB tables (quicklink-urls, quicklink-tokens)
@@ -192,7 +198,8 @@ Content-Type: application/json
 Request:
 {
   "url": "https://example.com/very/long/url",
-  "customAlias": "mylink"  // Optional
+  "customAlias": "mylink",  // Optional
+  "expiryInDays": 30          // Optional (1-365 days)
 }
 
 Response: 201 Created
@@ -200,7 +207,8 @@ Response: 201 Created
   "shortCode": "aB3xY9z",
   "shortUrl": "https://skt.inc/aB3xY9z",
   "longUrl": "https://example.com/very/long/url",
-  "createdAt": 1704067200
+  "createdAt": 1704067200,
+  "expiresAt": 1706659200     // null if no expiry
 }
 ```
 
@@ -441,6 +449,12 @@ quicklink/
 │   │       └── application.yml
 │   └── test/
 │       └── java/inc/skt/quicklink/
+│           ├── controller/
+│           │   ├── HealthControllerTest.java
+│           │   └── UrlControllerTest.java
+│           ├── service/
+│           │   ├── TokenServiceTest.java
+│           │   └── UrlServiceTest.java
 │           └── util/
 │               └── Base62EncoderTest.java
 └── infrastructure/  # AWS CDK (pending)
@@ -485,8 +499,7 @@ This project is licensed under the MIT License.
 - [ ] Add redirect logic with expiry and active status checks
 
 ### Medium Priority
-- [ ] Add unit tests (UrlService, TokenService, Base62Encoder)
-- [ ] Add integration tests
+- [ ] Add integration tests (full stack testing)
 - [ ] Create DynamoDB tables (manual or CDK)
 - [ ] Test end-to-end locally with DynamoDB Local
 
