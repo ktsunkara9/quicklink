@@ -1,5 +1,5 @@
 {
-  "app": ".venv\\Scripts\\python.exe app.py",
+  "app": "run-app.cmd",
   "context": {
     "@aws-cdk/core:newStyleStackSynthesis": true
   }

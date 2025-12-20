@@ -2,6 +2,8 @@
 import aws_cdk as cdk
 from quicklink_stack import QuickLinkStack
 
+print("[DEBUG] Starting CDK app synthesis...")
+
 app = cdk.App()
 
 QuickLinkStack(app, "QuickLinkStack",
@@ -11,4 +13,6 @@ QuickLinkStack(app, "QuickLinkStack",
     )
 )
 
+print("[DEBUG] Calling app.synth()...")
 app.synth()
+print("[DEBUG] Synthesis complete!")
