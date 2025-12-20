@@ -1,3 +1,2 @@
 @echo off
-set PATH=%~dp0.venv\Scripts;%PATH%
-cdk %*
+.venv\Scripts\python.exe -m aws_cdk %*
