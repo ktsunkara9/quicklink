@@ -14,7 +14,7 @@ import java.util.Map;
 @Tag(name = "Health", description = "Health check endpoints")
 public class HealthController {
 
-    @GetMapping("/health")
+    @GetMapping("/api/v1/health")
     @Operation(summary = "Health check", description = "Returns the health status of the service and its dependencies")
     @ApiResponse(responseCode = "200", description = "Service is healthy")
     public ResponseEntity<HealthResponse> health() {

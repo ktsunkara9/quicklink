@@ -5,6 +5,8 @@ import inc.skt.quicklink.dto.ShortenResponse;
 import inc.skt.quicklink.exception.AliasAlreadyExistsException;
 import inc.skt.quicklink.exception.InvalidAliasException;
 import inc.skt.quicklink.exception.InvalidUrlException;
+import inc.skt.quicklink.exception.UrlExpiredException;
+import inc.skt.quicklink.exception.UrlNotFoundException;
 import inc.skt.quicklink.model.UrlMapping;
 import inc.skt.quicklink.repository.UrlRepository;
 import inc.skt.quicklink.util.Base62Encoder;
@@ -167,6 +169,30 @@ public class UrlService {
                 "Custom alias '" + alias + "' is a reserved keyword"
             );
         }
+    }
+    
+    /**
+     * Retrieves original URL for a given short code.
+     * Validates that URL exists, is active, and not expired.
+     */
+    public UrlMapping getOriginalUrl(String shortCode) {
+        log.debug("Retrieving URL for shortCode: {}", shortCode);
+        
+        UrlMapping urlMapping = urlRepository.findByShortCode(shortCode)
+                .orElseThrow(() -> new UrlNotFoundException("Short URL not found: " + shortCode));
+        
+        if (!urlMapping.getIsActive()) {
+            log.warn("Inactive URL accessed: {}", shortCode);
+            throw new UrlExpiredException("This short URL has been deactivated");
+        }
+        
+        if (urlMapping.getExpiresAt() != null && urlMapping.getExpiresAt() < System.currentTimeMillis() / 1000) {
+            log.warn("Expired URL accessed: {}", shortCode);
+            throw new UrlExpiredException("This short URL has expired");
+        }
+        
+        log.info("Successfully retrieved URL for shortCode: {}", shortCode);
+        return urlMapping;
     }
     
     /**
