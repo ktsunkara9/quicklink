@@ -37,6 +37,7 @@ public class UrlService {
     public ShortenResponse createShortUrl(ShortenRequest request) {
         // Fail-fast: Validate URL first (before any expensive operations)
         validateUrl(request.getUrl());
+        validateExpiry(request.getExpiryInDays());
         
         String shortCode;
         
@@ -61,13 +62,19 @@ public class UrlService {
         
         long now = System.currentTimeMillis() / 1000;
         
+        // Calculate expiresAt if expiryInDays is provided
+        Long expiresAt = null;
+        if (request.getExpiryInDays() != null) {
+            expiresAt = now + (request.getExpiryInDays() * 24L * 60L * 60L);
+        }
+        
         UrlMapping mapping = new UrlMapping(
             shortCode,
             request.getUrl(),
             now,
             "anonymous",
             true,
-            null,
+            expiresAt,
             request.getCustomAlias() != null,
             0L
         );
@@ -78,8 +85,21 @@ public class UrlService {
             shortCode,
             shortDomain + "/" + shortCode,
             request.getUrl(),
-            now
+            now,
+            expiresAt
         );
+    }
+    
+    /**
+     * Validates expiry days constraint.
+     * Fail-fast validation - throws exception immediately if invalid.
+     */
+    private void validateExpiry(Integer expiryInDays) {
+        if (expiryInDays != null) {
+            if (expiryInDays < 1 || expiryInDays > 365) {
+                throw new InvalidUrlException("Expiry must be between 1 and 365 days");
+            }
+        }
     }
     
     /**

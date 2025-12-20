@@ -11,12 +11,21 @@ public class ShortenRequest {
     @Schema(description = "Optional custom alias for the short code", example = "mylink")
     private String customAlias;
     
+    @Schema(description = "Optional expiry in days (1-365). If not provided, URL never expires", example = "30")
+    private Integer expiryInDays;
+    
     public ShortenRequest() {
     }
     
     public ShortenRequest(String url, String customAlias) {
         this.url = url;
         this.customAlias = customAlias;
+    }
+    
+    public ShortenRequest(String url, String customAlias, Integer expiryInDays) {
+        this.url = url;
+        this.customAlias = customAlias;
+        this.expiryInDays = expiryInDays;
     }
     
     public String getUrl() {
@@ -33,5 +42,13 @@ public class ShortenRequest {
     
     public void setCustomAlias(String customAlias) {
         this.customAlias = customAlias;
+    }
+    
+    public Integer getExpiryInDays() {
+        return expiryInDays;
+    }
+    
+    public void setExpiryInDays(Integer expiryInDays) {
+        this.expiryInDays = expiryInDays;
     }
 }

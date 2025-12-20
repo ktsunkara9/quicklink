@@ -17,6 +17,9 @@ public class ShortenResponse {
     @Schema(description = "Creation timestamp in seconds", example = "1704067200")
     private Long createdAt;
     
+    @Schema(description = "Expiry timestamp in seconds (null if never expires)", example = "1735689600")
+    private Long expiresAt;
+    
     public ShortenResponse() {
     }
     
@@ -25,6 +28,14 @@ public class ShortenResponse {
         this.shortUrl = shortUrl;
         this.longUrl = longUrl;
         this.createdAt = createdAt;
+    }
+    
+    public ShortenResponse(String shortCode, String shortUrl, String longUrl, Long createdAt, Long expiresAt) {
+        this.shortCode = shortCode;
+        this.shortUrl = shortUrl;
+        this.longUrl = longUrl;
+        this.createdAt = createdAt;
+        this.expiresAt = expiresAt;
     }
     
     public String getShortCode() {
@@ -57,5 +68,13 @@ public class ShortenResponse {
     
     public void setCreatedAt(Long createdAt) {
         this.createdAt = createdAt;
+    }
+    
+    public Long getExpiresAt() {
+        return expiresAt;
+    }
+    
+    public void setExpiresAt(Long expiresAt) {
+        this.expiresAt = expiresAt;
     }
 }
