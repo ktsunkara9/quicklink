@@ -1,3 +1,3 @@
 @echo off
-call .venv\Scripts\activate.bat
+set PATH=%~dp0.venv\Scripts;%PATH%
 cdk %*
