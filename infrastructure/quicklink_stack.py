@@ -49,7 +49,6 @@ class QuickLinkStack(Stack):
             memory_size=512,  # Minimum for Spring Boot
             timeout=Duration.seconds(10),  # Sufficient for cold start + execution
             environment={
-                "AWS_REGION": "us-east-1",
                 "DYNAMODB_TABLE_URLS": self.urls_table.table_name,
                 "DYNAMODB_TABLE_TOKENS": self.tokens_table.table_name
             }
