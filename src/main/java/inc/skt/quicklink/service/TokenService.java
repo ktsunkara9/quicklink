@@ -1,6 +1,8 @@
 package inc.skt.quicklink.service;
 
 import inc.skt.quicklink.repository.TokenRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class TokenService {
     
+    private static final Logger log = LoggerFactory.getLogger(TokenService.class);
     private static final int RANGE_SIZE = 100;
     private static final String TOKEN_ID = "global_counter";
     
@@ -43,8 +46,10 @@ public class TokenService {
      * Uses atomic ADD operation to increment the counter.
      */
     private void allocateNewRange() {
+        log.debug("Allocating new ID range of size: {}", RANGE_SIZE);
         long newRangeEnd = tokenRepository.incrementAndGet(TOKEN_ID, RANGE_SIZE);
         currentId = newRangeEnd - RANGE_SIZE;
         rangeEnd = newRangeEnd;
+        log.info("New ID range allocated: {} to {}", currentId, rangeEnd - 1);
     }
 }

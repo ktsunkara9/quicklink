@@ -8,6 +8,8 @@ import inc.skt.quicklink.exception.InvalidUrlException;
 import inc.skt.quicklink.model.UrlMapping;
 import inc.skt.quicklink.repository.UrlRepository;
 import inc.skt.quicklink.util.Base62Encoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +19,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class UrlService {
+    
+    private static final Logger log = LoggerFactory.getLogger(UrlService.class);
     
     private final UrlRepository urlRepository;
     private final TokenService tokenService;
@@ -35,6 +39,8 @@ public class UrlService {
      * Otherwise, auto-generates a short code using TokenService.
      */
     public ShortenResponse createShortUrl(ShortenRequest request) {
+        log.debug("Creating short URL for: {}", request.getUrl());
+        
         // Fail-fast: Validate URL first (before any expensive operations)
         validateUrl(request.getUrl());
         validateExpiry(request.getExpiryInDays());
@@ -80,6 +86,8 @@ public class UrlService {
         );
         
         urlRepository.save(mapping);
+        
+        log.info("Short URL created: {} -> {}", shortCode, request.getUrl());
         
         return new ShortenResponse(
             shortCode,
