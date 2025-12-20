@@ -630,3 +630,6 @@ This project is licensed under the MIT License.
 ## 👤 Author
 
 Built as a learning project to demonstrate system design and AWS serverless architecture.
+
+python -c "import aws_cdk as cdk; from quicklink_stack import QuickLinkStack; app = cdk.App(); QuickLinkStack(app, 'QuickLinkStack', env=cdk.Environment(region='us-east-1')); print('Synthesizing...'); result = app.synth(); print(f'Done! Assembly: {result.directory}')"
+

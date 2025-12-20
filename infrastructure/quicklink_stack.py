@@ -44,7 +44,7 @@ class QuickLinkStack(Stack):
             self, "QuickLinkFunction",
             function_name="quicklink-service",
             runtime=lambda_.Runtime.JAVA_17,
-            handler="org.springframework.cloud.function.adapter.aws.FunctionInvoker::handleRequest",
+            handler="inc.skt.quicklink.StreamLambdaHandler::handleRequest",
             code=lambda_.Code.from_asset("../target/quicklink-1.0.0.jar"),
             memory_size=512,  # Minimum for Spring Boot
             timeout=Duration.seconds(10),  # Sufficient for cold start + execution
