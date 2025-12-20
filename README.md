@@ -38,14 +38,18 @@ This repository focuses on **HLD → LLD → trade-offs**, making it suitable fo
 - [x] Unit tests - Base62Encoder (comprehensive coverage)
 - [x] Swagger/OpenAPI documentation
 - [x] Spring Boot DevTools for hot reload
+- [x] AWS CDK infrastructure (Python)
+- [x] CDK stack with DynamoDB tables (quicklink-urls, quicklink-tokens)
+- [x] CDK Lambda function definition (Spring Boot, 512MB, 10s timeout)
+- [x] CDK API Gateway REST API (with throttling)
+- [x] IAM permissions (Lambda to DynamoDB)
 
 ### 🔴 Pending
 - [ ] Analytics service (@Async)
 - [ ] SQS integration
 - [ ] Integration tests
-- [ ] AWS CDK infrastructure
-- [ ] Create DynamoDB tables (quicklink-urls, quicklink-tokens)
-- [ ] Deployment to AWS
+- [ ] Deployment to AWS (cdk deploy)
+- [ ] Initialize token counter in DynamoDB
 
 
 ## ✨ Features
@@ -364,8 +368,10 @@ public class Base62Encoder {
 ### Prerequisites
 - Java 17+
 - Maven 3.8+
+- Node.js 14+ (for AWS CDK CLI)
+- Python 3.12+ (for CDK infrastructure code)
 - AWS CLI configured (for deployment)
-- AWS CDK installed (for deployment)
+- AWS CDK CLI installed (for deployment)
 
 ### Local Development
 ```bash
@@ -387,15 +393,120 @@ http://localhost:8080/swagger-ui.html
 ```
 
 ### Deploy to AWS
+
+#### Step 1: Install AWS CDK CLI
 ```bash
-# Navigate to infrastructure
+# Install CDK CLI globally (requires Node.js)
+npm install -g aws-cdk
+
+# Verify installation
+cdk --version  # Should show 2.x.x
+```
+
+#### Step 2: Configure AWS Credentials
+```bash
+# Configure AWS CLI with your credentials
+aws configure
+# Enter: Access Key ID, Secret Access Key, Region (us-east-1), Output format (json)
+
+# Verify credentials
+aws sts get-caller-identity
+```
+
+#### Step 3: Build Java Application
+```bash
+# Build Spring Boot JAR
+mvn clean package
+
+# Verify JAR exists
+ls -l target/quicklink-1.0.0.jar
+```
+
+#### Step 4: Setup CDK Infrastructure
+```bash
+# Navigate to infrastructure directory
 cd infrastructure
+
+# Create Python virtual environment
+python3 -m venv .venv
+
+# Activate virtual environment
+# On Windows:
+.venv\Scripts\activate
+# On Mac/Linux:
+source .venv/bin/activate
 
 # Install CDK dependencies
 pip install -r requirements.txt
+```
+
+#### Step 5: Bootstrap CDK (First Time Only)
+```bash
+# Bootstrap CDK in your AWS account
+cdk bootstrap
+
+# This creates:
+# - S3 bucket for CDK assets
+# - IAM roles for deployments
+# - CloudFormation stack: CDKToolkit
+```
+
+#### Step 6: Deploy Infrastructure
+```bash
+# Preview changes (optional)
+cdk diff
 
 # Deploy stack
 cdk deploy
+
+# Confirm deployment when prompted
+# Wait 5-10 minutes for deployment to complete
+```
+
+#### Step 7: Initialize Token Counter
+```bash
+# After deployment, initialize the global counter
+aws dynamodb put-item \
+  --table-name quicklink-tokens \
+  --item '{
+    "tokenId": {"S": "global_counter"},
+    "currentRangeEnd": {"N": "0"},
+    "lastUpdated": {"N": "'$(date +%s)'"}
+  }'
+
+# Verify initialization
+aws dynamodb get-item \
+  --table-name quicklink-tokens \
+  --key '{"tokenId": {"S": "global_counter"}}'
+```
+
+#### Step 8: Test Deployment
+```bash
+# Get API Gateway URL from CloudFormation outputs
+aws cloudformation describe-stacks \
+  --stack-name QuickLinkStack \
+  --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' \
+  --output text
+
+# Test health endpoint
+curl https://YOUR_API_URL/api/v1/health
+
+# Test shorten endpoint
+curl -X POST https://YOUR_API_URL/api/v1/shorten \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/long-url"}'
+
+# Test redirect (use shortCode from response)
+curl -L https://YOUR_API_URL/0000001
+```
+
+#### Useful CDK Commands
+```bash
+cdk ls          # List all stacks
+cdk synth       # Synthesize CloudFormation template
+cdk diff        # Show differences between deployed and local
+cdk deploy      # Deploy stack
+cdk destroy     # Delete all resources
 ```
 
 ---
@@ -458,7 +569,11 @@ quicklink/
 │           │   └── UrlServiceTest.java
 │           └── util/
 │               └── Base62EncoderTest.java
-└── infrastructure/  # AWS CDK (pending)
+└── infrastructure/
+    ├── requirements.txt
+    ├── cdk.json
+    ├── app.py
+    └── quicklink_stack.py
 ```
 
 ---
@@ -497,17 +612,17 @@ This project is licensed under the MIT License.
 
 ### High Priority
 - [ ] Add integration tests (full stack testing)
-- [ ] Create DynamoDB tables (manual or CDK)
-- [ ] Test end-to-end locally with DynamoDB Local
+- [ ] Deploy to AWS (cdk deploy)
+- [ ] Initialize token counter in DynamoDB
+- [ ] Test end-to-end on AWS
 
 ### Medium Priority
 - [ ] Analytics service (@Async)
 - [ ] SQS integration
-- [ ] Set up AWS CDK infrastructure
+- [ ] Test end-to-end locally with DynamoDB Local
 
 ### Low Priority
 - [ ] Configure custom domain: `https://skt.inc`
-- [ ] Deploy to AWS Lambda
 - [ ] Performance testing and optimization
 
 ---
