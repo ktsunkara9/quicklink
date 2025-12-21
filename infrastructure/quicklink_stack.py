@@ -46,7 +46,7 @@ class QuickLinkStack(Stack):
             function_name="quicklink-service",
             runtime=lambda_.Runtime.JAVA_17,
             handler="inc.skt.quicklink.StreamLambdaHandler::handleRequest",
-            code=lambda_.Code.from_asset("../target/quicklink-1.0.0.jar"),
+            code=lambda_.Code.from_asset("../target/quicklink-1.0.0-aws.jar"),
             memory_size=512,
             timeout=Duration.seconds(10),
             environment={
