@@ -5,9 +5,18 @@ echo ========================================
 echo.
 
 echo [1/3] Building shaded JAR with Maven...
-call mvnw.cmd clean package -DskipTests
-if %ERRORLEVEL% NEQ 0 (
-    echo ERROR: Maven build failed!
+echo Please build the project in IntelliJ:
+echo 1. Open Maven tool window (right side)
+echo 2. Expand quicklink -^> Lifecycle
+echo 3. Double-click 'clean'
+echo 4. Double-click 'package'
+echo 5. Wait for BUILD SUCCESS
+echo.
+echo Press any key after build completes...
+pause >nul
+
+if not exist "target\quicklink-1.0.0-aws.jar" (
+    echo ERROR: Shaded JAR not found! Build may have failed.
     exit /b 1
 )
 echo Build successful!
