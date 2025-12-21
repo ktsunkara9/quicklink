@@ -61,6 +61,13 @@
             <version>${aws.sdk.version}</version>
         </dependency>
         
+        <!-- AWS SDK v2 - SQS Client -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sqs</artifactId>
+            <version>${aws.sdk.version}</version>
+        </dependency>
+        
         <!-- AWS Serverless Java Container - For Lambda integration -->
         <dependency>
             <groupId>com.amazonaws.serverless</groupId>

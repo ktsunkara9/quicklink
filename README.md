@@ -670,7 +670,8 @@ This project is licensed under the MIT License.
 ### Low Priority
 - [ ] Configure custom domain: `https://skt.inc`
 - [ ] Add API authentication (Cognito)
-- [ ] Implement rate limiting per user
+- [ ] Implement rate limiting per user/IP
+- [ ] Bot detection and prevention
 
 ---
 

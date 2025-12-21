@@ -3,9 +3,11 @@ package inc.skt.quicklink.controller;
 import inc.skt.quicklink.dto.ShortenRequest;
 import inc.skt.quicklink.dto.ShortenResponse;
 import inc.skt.quicklink.model.UrlMapping;
+import inc.skt.quicklink.service.AnalyticsService;
 import inc.skt.quicklink.service.UrlService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,9 +25,11 @@ import java.net.URI;
 public class UrlController {
     
     private final UrlService urlService;
+    private final AnalyticsService analyticsService;
     
-    public UrlController(UrlService urlService) {
+    public UrlController(UrlService urlService, AnalyticsService analyticsService) {
         this.urlService = urlService;
+        this.analyticsService = analyticsService;
     }
     
     /**
@@ -41,12 +45,21 @@ public class UrlController {
     
     /**
      * Redirects short URL to original URL.
+     * Records analytics asynchronously without blocking redirect.
      * GET /{shortCode}
      */
     @GetMapping("/{shortCode}")
     @Operation(summary = "Redirect to original URL", description = "Redirects short URL to the original long URL")
-    public ResponseEntity<Void> redirect(@PathVariable String shortCode) {
+    public ResponseEntity<Void> redirect(@PathVariable String shortCode, HttpServletRequest request) {
         UrlMapping urlMapping = urlService.getOriginalUrl(shortCode);
+        
+        // Record analytics asynchronously (non-blocking)
+        analyticsService.recordClick(
+                shortCode,
+                request.getRemoteAddr(),
+                request.getHeader("User-Agent")
+        );
+        
         return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY)
                 .location(URI.create(urlMapping.getLongUrl()))
                 .build();

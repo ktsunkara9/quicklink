@@ -7,6 +7,7 @@ from aws_cdk import (
     aws_dynamodb as dynamodb,
     aws_lambda as lambda_,
     aws_apigateway as apigateway,
+    aws_sqs as sqs,
 )
 from constructs import Construct
 
@@ -40,6 +41,14 @@ class QuickLinkStack(Stack):
             removal_policy=RemovalPolicy.DESTROY
         )
 
+        # SQS Queue: Analytics events
+        self.analytics_queue = sqs.Queue(
+            self, "AnalyticsQueue",
+            queue_name="quicklink-analytics",
+            retention_period=Duration.days(4),
+            visibility_timeout=Duration.seconds(30)
+        )
+
         # Lambda Function: QuickLink Spring Boot Application
         self.quicklink_function = lambda_.Function(
             self, "QuickLinkFunction",
@@ -52,13 +61,17 @@ class QuickLinkStack(Stack):
             environment={
                 "SPRING_PROFILES_ACTIVE": "prod",
                 "DYNAMODB_TABLE_URLS": self.urls_table.table_name,
-                "DYNAMODB_TABLE_TOKENS": self.tokens_table.table_name
+                "DYNAMODB_TABLE_TOKENS": self.tokens_table.table_name,
+                "AWS_SQS_ANALYTICS_QUEUE_URL": self.analytics_queue.queue_url
             }
         )
 
         # Grant Lambda permissions to access DynamoDB tables
         self.urls_table.grant_read_write_data(self.quicklink_function)
         self.tokens_table.grant_read_write_data(self.quicklink_function)
+        
+        # Grant Lambda permission to send messages to SQS
+        self.analytics_queue.grant_send_messages(self.quicklink_function)
 
         # API Gateway: REST API
         self.api = apigateway.LambdaRestApi(
@@ -90,4 +103,10 @@ class QuickLinkStack(Stack):
             self, "LambdaFunctionName",
             value=self.quicklink_function.function_name,
             description="Lambda function name"
+        )
+        
+        CfnOutput(
+            self, "AnalyticsQueueUrl",
+            value=self.analytics_queue.queue_url,
+            description="SQS analytics queue URL"
         )
