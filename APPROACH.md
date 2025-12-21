@@ -627,4 +627,13 @@ To avoid this issue in future:
 
 CDK's asset caching is efficient but can cause confusion during rapid development. Understanding when to use direct Lambda updates vs full CDK redeployment saves time and prevents deployment issues.
 
+**Important:** After updating Lambda code with `aws lambda update-function-code`, old Lambda containers may still be running with the old code for up to 15 minutes. Either:
+1. Wait 15 minutes for old containers to expire
+2. Force new container with configuration update:
+```bash
+aws lambda update-function-configuration \
+  --function-name quicklink-service \
+  --description "Force refresh - $(date +%s)"
+```
+
 ---
