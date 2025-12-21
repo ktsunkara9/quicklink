@@ -39,6 +39,9 @@ public class AnalyticsService {
      */
     @Async
     public void recordClick(String shortCode, String ipAddress, String userAgent) {
+        logger.info("=== ANALYTICS START: shortCode={}, thread={}", shortCode, Thread.currentThread().getName());
+        logger.info("=== ANALYTICS: queueUrl={}", queueUrl);
+        
         try {
             AnalyticsEvent event = new AnalyticsEvent(
                     shortCode,
@@ -47,21 +50,24 @@ public class AnalyticsService {
                     userAgent
             );
             
+            logger.info("=== ANALYTICS: Event created: {}", event);
+            
             String messageBody = objectMapper.writeValueAsString(event);
+            logger.info("=== ANALYTICS: JSON serialized: {}", messageBody);
             
             SendMessageRequest request = SendMessageRequest.builder()
                     .queueUrl(queueUrl)
                     .messageBody(messageBody)
                     .build();
             
+            logger.info("=== ANALYTICS: Sending to SQS...");
             sqsClient.sendMessage(request);
-            
-            logger.debug("Analytics event sent to SQS: {}", shortCode);
+            logger.info("=== ANALYTICS SUCCESS: Message sent to SQS for shortCode: {}", shortCode);
             
         } catch (JsonProcessingException e) {
-            logger.error("Failed to serialize analytics event: {}", e.getMessage());
+            logger.error("=== ANALYTICS ERROR: Failed to serialize: {}", e.getMessage(), e);
         } catch (Exception e) {
-            logger.error("Failed to send analytics event to SQS: {}", e.getMessage());
+            logger.error("=== ANALYTICS ERROR: Failed to send to SQS: {}", e.getMessage(), e);
         }
     }
 }
