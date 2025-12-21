@@ -61,6 +61,13 @@
             <version>${aws.sdk.version}</version>
         </dependency>
         
+        <!-- AWS Serverless Java Container - For Lambda integration -->
+        <dependency>
+            <groupId>com.amazonaws.serverless</groupId>
+            <artifactId>aws-serverless-java-container-springboot3</artifactId>
+            <version>2.0.3</version>
+        </dependency>
+        
         <!-- Spring Boot Test - For unit testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

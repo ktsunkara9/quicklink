@@ -4,9 +4,237 @@ This document captures the architectural decisions, trade-offs, and learnings th
 
 ---
 
-## How Spring Profiles Work
+## Table of Contents
+1. [Design Decisions](#design-decisions)
+2. [Implementation Learnings](#implementation-learnings)
+3. [Spring Profiles](#spring-profiles)
+4. [AWS & Infrastructure](#aws--infrastructure)
 
-### Local Development (Current)
+---
+
+## Design Decisions
+
+### 1. Domain Model Design
+
+#### Decision: Use `shortCode` as Primary Key (Not `shortUrl`)
+
+**Rationale:**
+- Domain names can change over time (e.g., `skt.inc` → `go.skt.inc`)
+- Storing full URL wastes storage (31 bytes vs 7 bytes per record)
+- Domain is configuration, not data
+- Enables environment-specific URLs (localhost, staging, production)
+
+**Trade-off:**
+- ✅ Flexibility: Can change domain without database migration
+- ✅ Storage efficiency: 77% reduction in PK size
+- ✅ Environment independence: Same data works across all environments
+- ❌ Need to build `shortUrl` dynamically in application layer
+
+**Implementation:**
+```java
+// Stored in DB
+String shortCode = "aB3xY9z";
+
+// Built dynamically
+String shortUrl = baseUrl + "/" + shortCode;
+// = "https://skt.inc/aB3xY9z"
+```
+
+---
+
+### 2. Base62 Encoding for Short Codes
+
+#### Decision: Use Base62 (0-9, a-z, A-Z) for 7-character codes
+
+**Rationale:**
+- URL-safe characters only (no special chars like `+`, `/`, `=`)
+- Compact representation: 62^7 = 3.5 trillion unique codes
+- Collision-free: Each ID maps to exactly one short code
+- Reversible: Can decode back to original ID if needed
+
+**Trade-off:**
+- ✅ No collisions (deterministic mapping)
+- ✅ Efficient: 7 characters support massive scale
+- ✅ Human-readable: No confusing special characters
+- ❌ Sequential IDs are predictable (security consideration for future)
+
+**Capacity:**
+```
+7 characters × 62 possibilities = 62^7 = 3,521,614,606,208 URLs
+At 1M URLs/day = 9,645 years of capacity
+```
+
+**How Base62 Encoding Works:**
+
+Base62 is just base conversion (like decimal to binary).
+
+**Example:**
+```
+ID 125 → Base62:
+125 % 62 = 1 → '1'
+125 / 62 = 2
+2 % 62 = 2 → '2'
+2 / 62 = 0
+Result (reversed): "21" → Padded: "0000021"
+```
+
+**Why It Works:**
+- Modulo gives the "digit" in base62
+- Division moves to next position
+- Reverse because division produces digits backwards
+
+---
+
+### 3. Domain Selection: `skt.inc` vs `quicklink.skt.inc`
+
+#### Decision: Use `skt.inc` (root domain)
+
+**Rationale:**
+- Shorter URLs are better for a URL shortener (core value proposition)
+- More professional and memorable
+- Easier to share verbally and in print
+- Follows industry pattern (bit.ly, youtu.be, t.co)
+
+**Trade-off:**
+- ✅ Shorter: `skt.inc/abc` vs `quicklink.skt.inc/abc`
+- ✅ Professional appearance
+- ✅ Easier to remember
+- ⚠️ Need careful routing (7-char codes vs static pages)
+
+**Routing Strategy:**
+```
+https://skt.inc/           → Main website (if exists)
+https://skt.inc/about      → Static page
+https://skt.inc/aB3xY9z    → URL redirect (7-char base62 pattern)
+```
+
+---
+
+### 4. equals() and hashCode() Implementation
+
+#### Decision: Implement based on `shortCode` (primary key)
+
+**Rationale:**
+- DynamoDB handles uniqueness at database level
+- Needed for Java collections (HashSet, HashMap)
+- Essential for unit testing (object comparison)
+- Follows best practice: equals/hashCode based on business key
+
+**How HashMap Uses Both:**
+1. Call `hashCode()` to find bucket (fast)
+2. Call `equals()` to find exact object in bucket (accurate)
+
+**Contract:**
+- If `a.equals(b)` is true, then `a.hashCode() == b.hashCode()` MUST be true
+
+---
+
+### 5. Spring Boot vs Lightweight Frameworks
+
+#### Decision: Use Spring Boot
+
+**Trade-off:**
+- ❌ Cold start: 5-10 seconds (vs 100-500ms for Quarkus/Micronaut)
+- ✅ Expertise: Demonstrates Spring Boot mastery
+- ✅ Job market: Most in-demand framework
+- ✅ Ecosystem: Rich library support
+
+**Mitigation:**
+- Document cold start trade-offs
+- Mention Spring Native + SnapStart for production
+- Show architectural thinking (not just coding)
+
+---
+
+### 6. Architecture Decision: Single Lambda vs Separate Lambdas
+
+#### Decision: Use Single Lambda with Multiple Services ✅
+
+**Rationale:**
+- **Performance**: No Lambda-to-Lambda invocation latency (50-100ms saved)
+- **Cost**: No additional Lambda invocation charges
+- **Simplicity**: Easier deployment and debugging
+- **Caching**: TokenService range caching works optimally in single Lambda
+- **Industry Standard**: Most URL shorteners use single service architecture
+
+**Architecture:**
+```
+API Gateway
+    ↓
+┌─────────────────────────────────┐
+│  Lambda: URL Shortener          │
+│  ├─ UrlController               │
+│  ├─ UrlService                  │
+│  ├─ TokenService (in-process)   │
+│  └─ Repositories                │
+└─────────┬───────────────────────┘
+          ↓
+    DynamoDB (both tables)
+```
+
+**Trade-offs:**
+- ✅ Lower latency (in-memory method calls)
+- ✅ Lower cost (fewer Lambda invocations)
+- ✅ Simpler infrastructure
+- ✅ Better caching efficiency
+- ⚠️ Larger Lambda package size (acceptable)
+- ⚠️ Can't scale TokenService independently (not needed at our scale)
+
+---
+
+## Implementation Learnings
+
+### 1. Domain vs Short URL Confusion
+
+**Clarification:**
+- **Domain**: Website address (e.g., `skt.inc`) - You configure/buy this
+- **Short Code**: Generated identifier (e.g., `aB3xY9z`) - Application generates this
+- **Short URL**: Complete URL (e.g., `https://skt.inc/aB3xY9z`) - Combination of both
+
+**Key Takeaway:** We generate the short code, not the domain.
+
+---
+
+### 2. Storing shortUrl vs Computing It
+
+**Decision:** Compute dynamically from `baseUrl + shortCode`
+
+**Trade-off:**
+- ✅ Storage savings: 77% reduction
+- ✅ Flexibility: Change domain without migration
+- ✅ Environment independence
+- ❌ Slight CPU overhead (negligible string concatenation)
+
+**Calculation:**
+```
+100M URLs:
+- Storing shortUrl: 3.1 GB
+- Storing shortCode: 700 MB
+- Savings: 2.4 GB (77%)
+```
+
+---
+
+### 3. Real-World URL Shortener Use Cases
+
+**Who Uses Custom URL Shorteners:**
+1. **Companies (Internal)**: Marketing, sales, HR link tracking
+2. **SaaS Products**: Bitly, TinyURL (offer as service)
+3. **Platforms**: Twitter (t.co), YouTube (youtu.be)
+4. **Events**: Conference-specific shorteners
+
+**Our Project:** Portfolio demonstration + potential internal tool
+
+---
+
+## Spring Profiles
+
+### How Spring Profiles Work
+
+Spring Profiles allow the same codebase to use different implementations based on the environment.
+
+### Local Development
+
 ```yaml
 # application.yml
 spring:
@@ -64,7 +292,7 @@ public class DynamoDbUrlRepository implements UrlRepository { }
 
 ---
 
-## Summary
+### Summary
 
 | Environment | Profile | Repository Used | AWS Needed? |
 |-------------|---------|-----------------|-------------|
@@ -74,3 +302,256 @@ public class DynamoDbUrlRepository implements UrlRepository { }
 
 **Key Point:** Same code, different behavior based on profile!
 
+---
+
+## AWS & Infrastructure
+
+### CDK Synthesis Issue on Windows
+
+#### Problem
+Running `cdk synth` created empty `cdk.out/` directory without CloudFormation templates.
+
+#### Root Cause
+1. `cdk.json` specified `"app": "python3 app.py"`
+2. Windows doesn't have `python3` command (only `python`)
+3. CDK CLI failed silently when it couldn't find the Python interpreter
+4. Even when Python was found, it used system Python instead of venv's Python (which has `aws-cdk-lib`)
+
+#### Solution
+**Three-part fix:**
+
+1. **Created run-app.cmd wrapper:**
+```batch
+@echo off
+%~dp0.venv\Scripts\python.exe %~dp0app.py
+```
+
+2. **Updated cdk.json:**
+```json
+{
+  "app": "run-app.cmd",
+  "output": "cdk.out"
+}
+```
+
+3. **Modified app.py to manually write templates:**
+```python
+cloud_assembly = app.synth()
+
+# Manually write CloudFormation template
+os.makedirs("cdk.out", exist_ok=True)
+for stack_artifact in cloud_assembly.stacks:
+    template_file = os.path.join("cdk.out", f"{stack_artifact.stack_name}.template.json")
+    with open(template_file, "w") as f:
+        json.dump(stack_artifact.template, f, indent=2)
+```
+
+#### Key Learnings
+- CDK CLI (npm package) and Python CDK library are separate components
+- CDK CLI needs explicit path to correct Python interpreter on Windows
+- `app.synth()` validates but doesn't write files unless called by CDK CLI
+- Batch wrapper ensures venv's Python is used consistently
+- Manual template writing provides fallback when CDK CLI doesn't write output
+
+---
+
+### AWS Serverless Java Container - Bridging Spring Boot and Lambda
+
+#### The Problem
+Spring Boot and AWS Lambda are fundamentally incompatible:
+- **Spring Boot** expects to run as a standalone web server with embedded Tomcat
+- **AWS Lambda** expects a handler method: `handleRequest(input, output, context)`
+- API Gateway sends requests as JSON (`AwsProxyRequest`), not HTTP
+
+#### The Solution: AWS Serverless Java Container
+
+**Dependency:**
+```xml
+<dependency>
+    <groupId>com.amazonaws.serverless</groupId>
+    <artifactId>aws-serverless-java-container-springboot3</artifactId>
+    <version>2.0.3</version>
+</dependency>
+```
+
+#### What It Does
+
+1. **Initializes Spring Context** - Starts Spring Boot application inside Lambda
+2. **Request Translation** - Converts API Gateway `AwsProxyRequest` → Spring `HttpServletRequest`
+3. **Response Translation** - Converts Spring `HttpServletResponse` → API Gateway `AwsProxyResponse`
+4. **Lifecycle Management** - Keeps Spring context warm across Lambda invocations (reduces cold starts)
+
+#### Without This Library
+
+You'd need to manually:
+```java
+// Initialize Spring ApplicationContext
+ApplicationContext context = SpringApplication.run(QuickLinkApplication.class);
+
+// Parse API Gateway JSON
+AwsProxyRequest request = objectMapper.readValue(input, AwsProxyRequest.class);
+
+// Route to correct controller
+if (request.getPath().equals("/api/v1/shorten")) {
+    // Call UrlController.shortenUrl()
+}
+
+// Serialize response back to API Gateway format
+AwsProxyResponse response = new AwsProxyResponse(200, headers, body);
+```
+
+#### With This Library
+
+```java
+// Just 3 lines in handler:
+handler = SpringBootLambdaContainerHandler.getAwsProxyHandler(QuickLinkApplication.class);
+handler.proxyStream(input, output, context);
+// Done! All Spring controllers work automatically
+```
+
+#### Key Benefits
+
+- **Zero controller changes** - Existing `@RestController` classes work as-is
+- **Standard Spring features** - Dependency injection, exception handling, validation all work
+- **Reduced boilerplate** - No manual request/response mapping
+- **Production-ready** - Used by AWS in official examples
+
+#### Trade-off: Cold Start Impact
+
+**Cost:** Adds ~2-3 seconds to cold start (Spring context initialization)
+
+**Mitigation strategies:**
+- Use Provisioned Concurrency for critical endpoints
+- Consider Spring Native (GraalVM) for production
+- Keep Lambda warm with scheduled health checks
+
+**Decision:** Acceptable for demo/portfolio project to showcase Spring Boot expertise
+
+---
+
+### Lambda Container Lifecycle and Static Spring Context
+
+#### How Lambda Containers Work
+
+AWS Lambda doesn't create a new container for every request. Instead, it reuses containers across multiple invocations to improve performance.
+
+**Container Lifecycle:**
+```
+┌─────────────────────────────────────────────────┐
+│ Lambda Container (stays alive 5-15 minutes)     │
+├─────────────────────────────────────────────────┤
+│ COLD START (first invocation)                   │
+│ 1. Load JAR                                     │
+│ 2. Run static {} block → Initialize Spring      │ ← 5-10 seconds
+│ 3. Execute handleRequest()                      │ ← 50-200ms
+├─────────────────────────────────────────────────┤
+│ WARM INVOCATION #2                              │
+│ 1. Skip static {} (already initialized)         │
+│ 2. Execute handleRequest()                      │ ← 50-200ms
+├─────────────────────────────────────────────────┤
+│ WARM INVOCATION #3                              │
+│ 1. Skip static {} (already initialized)         │
+│ 2. Execute handleRequest()                      │ ← 50-200ms
+├─────────────────────────────────────────────────┤
+│ ... (container stays warm for ~5-15 min)        │
+└─────────────────────────────────────────────────┘
+```
+
+#### Static Spring Context in StreamLambdaHandler
+
+```java
+public class StreamLambdaHandler implements RequestStreamHandler {
+    
+    private static SpringBootLambdaContainerHandler<AwsProxyRequest, AwsProxyResponse> handler;
+
+    static {
+        // This runs ONCE per container, not per request
+        handler = SpringBootLambdaContainerHandler.getAwsProxyHandler(QuickLinkApplication.class);
+    }
+
+    @Override
+    public void handleRequest(InputStream input, OutputStream output, Context context) {
+        // This runs for EVERY request, reusing the same Spring context
+        handler.proxyStream(input, output, context);
+    }
+}
+```
+
+#### Why Static Initialization?
+
+**Benefits:**
+1. **Spring context initialized once** - Expensive operation (5-10s) happens only on cold start
+2. **Beans are reused** - Same service instances, repositories, configurations across requests
+3. **State persists** - TokenService's cached ID range survives across invocations
+4. **Faster warm requests** - Subsequent requests take 50-200ms instead of 5-10s
+
+**How It Works:**
+- **Cold start:** Static block runs → Spring context created → Request processed
+- **Warm requests:** Static block skipped → Existing Spring context reused → Request processed
+
+#### Impact on TokenService
+
+**TokenService allocates 100 IDs at a time and caches them in memory:**
+
+```java
+@Service
+public class TokenService {
+    private long currentId;
+    private long rangeEnd;
+    
+    public synchronized long getNextId() {
+        if (currentId >= rangeEnd) {
+            allocateNewRange();  // DynamoDB call every 100 requests
+        }
+        return currentId++;
+    }
+}
+```
+
+**With static Spring context:**
+- Request 1 (cold): Allocate range 1-100, return 1
+- Request 2 (warm): Return 2 (no DynamoDB call)
+- Request 3 (warm): Return 3 (no DynamoDB call)
+- ...
+- Request 100 (warm): Return 100 (no DynamoDB call)
+- Request 101 (warm): Allocate range 101-200, return 101
+
+**Result:** Only 1 DynamoDB call per 100 requests instead of 100 calls.
+
+#### Container Termination
+
+**When container dies (after 5-15 min inactivity):**
+- Spring context is destroyed
+- TokenService cache is lost
+- Unused IDs in range are wasted (acceptable trade-off)
+- Next request triggers cold start
+
+#### Lambda Timeout vs Container Lifetime
+
+| Concept | What It Controls | Who Controls It | Value |
+|---------|------------------|-----------------|-------|
+| **Lambda Timeout** | Max time for single request | You (CDK config) | 10 seconds |
+| **Container Lifetime** | How long container stays warm | AWS (automatic) | 5-15 minutes |
+
+**Lambda timeout = 10 seconds** means:
+- Each request must complete within 10 seconds
+- Does NOT affect how long container stays alive
+
+**Container lifetime = 5-15 minutes** means:
+- AWS keeps container warm for this duration after last request
+- You cannot configure this
+- Static context survives for this duration
+
+#### Best Practices
+
+1. **Use static initialization** - Initialize expensive resources once
+2. **Keep state in memory** - Cache data that survives across requests (like TokenService range)
+3. **Handle cold starts** - Design for 5-10s first request, 50-200ms subsequent
+4. **Set appropriate timeout** - 10-30s for APIs (API Gateway max is 29s)
+5. **Accept ID wastage** - Unused IDs when container dies is acceptable trade-off
+
+#### Key Takeaway
+
+Static Spring context is a **performance optimization** that reduces cost and latency by reusing expensive initialization across multiple Lambda invocations within the same container lifecycle.
+
+---
