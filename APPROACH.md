@@ -647,3 +647,258 @@ aws lambda update-function-configuration \
 ```
 
 ---
+
+### Maven Shade Plugin - Fixing ClassNotFoundException for Lambda
+
+#### The Problem
+
+Lambda's classloader expects classes at the root level of the JAR:
+```
+inc/skt/quicklink/StreamLambdaHandler.class  ✅ Lambda can find this
+```
+
+But Spring Boot Maven plugin creates a nested structure:
+```
+BOOT-INF/classes/inc/skt/quicklink/StreamLambdaHandler.class  ❌ Lambda cannot find this
+```
+
+**Result:** `ClassNotFoundException: inc.skt.quicklink.StreamLambdaHandler`
+
+#### Why This Happens
+
+Maven executes plugins sequentially:
+
+**Without fix:**
+1. **Spring Boot plugin** runs → Creates `quicklink-1.0.0.jar` with BOOT-INF structure
+2. **Shade plugin** runs → Copies the BOOT-INF structure into `quicklink-1.0.0-aws.jar`
+3. **Result:** Both JARs have BOOT-INF, Lambda fails
+
+**Root cause:** Spring Boot plugin's repackaging creates a special JAR format designed for `java -jar` execution, not for Lambda's classloader.
+
+#### The Solution
+
+Disable Spring Boot plugin repackaging and let Shade plugin create a flat JAR:
+
+```xml
+<build>
+    <plugins>
+        <!-- Disable Spring Boot repackaging -->
+        <plugin>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+            <configuration>
+                <excludeDevtools>false</excludeDevtools>
+                <skip>true</skip>  <!-- ← This is the key -->
+            </configuration>
+        </plugin>
+        
+        <!-- Shade plugin creates flat JAR -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <version>3.5.0</version>
+            <configuration>
+                <createDependencyReducedPom>false</createDependencyReducedPom>
+                <shadedArtifactAttached>true</shadedArtifactAttached>
+                <shadedClassifierName>aws</shadedClassifierName>
+            </configuration>
+            <executions>
+                <execution>
+                    <phase>package</phase>
+                    <goals>
+                        <goal>shade</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+```
+
+#### How It Works
+
+**With fix:**
+1. **Spring Boot plugin** is skipped (`<skip>true</skip>`)
+2. **Shade plugin** runs alone → Creates flat JAR directly from compiled classes
+3. **Result:** `quicklink-1.0.0-aws.jar` has flat structure, Lambda succeeds
+
+**JAR structure comparison:**
+
+```
+# Before (BOOT-INF structure) ❌
+quicklink-1.0.0-aws.jar
+├── BOOT-INF/
+│   ├── classes/
+│   │   └── inc/skt/quicklink/StreamLambdaHandler.class
+│   └── lib/
+│       └── [all dependencies]
+└── org/springframework/boot/loader/
+
+# After (flat structure) ✅
+quicklink-1.0.0-aws.jar
+├── inc/skt/quicklink/StreamLambdaHandler.class
+├── org/springframework/
+├── com/amazonaws/
+└── [all classes at root level]
+```
+
+#### Verification
+
+After building, verify the JAR structure:
+
+```bash
+# Check if StreamLambdaHandler is at root level
+jar -tf target/quicklink-1.0.0-aws.jar | findstr "StreamLambdaHandler"
+
+# Should output:
+inc/skt/quicklink/StreamLambdaHandler.class  ✅
+
+# NOT:
+BOOT-INF/classes/inc/skt/quicklink/StreamLambdaHandler.class  ❌
+```
+
+#### Why Minimal Configuration Works
+
+We don't need transformers or filters because:
+- **No Spring metadata conflicts** - AWS Serverless Java Container handles Spring initialization
+- **No signature issues** - Shade plugin automatically excludes signature files
+- **No manifest needed** - Lambda doesn't use JAR manifest for handler lookup
+
+**Minimal configuration is sufficient:**
+```xml
+<configuration>
+    <createDependencyReducedPom>false</createDependencyReducedPom>
+    <shadedArtifactAttached>true</shadedArtifactAttached>
+    <shadedClassifierName>aws</shadedClassifierName>
+</configuration>
+```
+
+#### Build Output
+
+After `mvn clean package`, you'll have two JARs:
+
+```
+target/
+├── quicklink-1.0.0.jar        (38 MB, BOOT-INF structure, for local java -jar)
+└── quicklink-1.0.0-aws.jar    (75 MB, flat structure, for Lambda)
+```
+
+**Use `quicklink-1.0.0-aws.jar` for Lambda deployment.**
+
+#### Key Takeaways
+
+1. **Spring Boot JAR ≠ Lambda-compatible JAR** - Different classloader expectations
+2. **`<skip>true</skip>` is critical** - Prevents Spring Boot plugin from creating BOOT-INF structure
+3. **Shade plugin creates flat JAR** - Unpacks all dependencies to root level
+4. **Minimal configuration works** - No complex transformers needed for our use case
+5. **Verify JAR structure** - Always check with `jar -tf` before deploying
+
+#### Trade-offs
+
+- ✅ Lambda can find handler class
+- ✅ All dependencies included in single JAR
+- ✅ No runtime classpath issues
+- ❌ Larger JAR size (75 MB vs 38 MB) - acceptable for Lambda
+- ❌ Cannot run locally with `java -jar quicklink-1.0.0-aws.jar` - use the regular JAR for local testing
+
+---
+
+### Testing URL Redirects in Postman
+
+#### The Problem
+
+When testing redirect endpoints (301/302) in Postman, you may see unexpected results:
+- **404 Not Found** - Even though your redirect is working
+- **200 OK** - Shows the target website's content instead of the redirect response
+
+**Why?** Postman automatically follows redirects by default, so you see the final destination's response, not your redirect response.
+
+#### The Solution
+
+Disable automatic redirect following in Postman to see the actual 301/302 response from your API.
+
+#### Step-by-Step Instructions
+
+**1. Open Postman Settings**
+- Click the gear icon (⚙️) in the top-right corner
+- Select **Settings**
+
+**2. Disable Automatic Redirects**
+- Go to the **General** tab
+- Find **"Automatically follow redirects"**
+- **Uncheck** this option
+- Close settings
+
+**3. Test Your Redirect Endpoint**
+```
+GET https://YOUR_API_URL/mylink
+```
+
+**Expected Response (with redirects disabled):**
+```
+Status: 301 Moved Permanently
+
+Headers:
+Location: https://example.com/target-url
+Content-Length: 0
+```
+
+**What You'll See (with redirects enabled):**
+```
+Status: 404 Not Found  (or 200 OK from target site)
+
+Body: [Content from target website]
+```
+
+#### Visual Comparison
+
+**❌ With Redirects Enabled (Default)**
+```
+Request:  GET /mylink
+          ↓
+Response: 301 → Postman follows → GET https://example.com/target
+          ↓
+Shows:    404 (if target doesn't exist) or 200 (target's content)
+```
+
+**✅ With Redirects Disabled (Correct for Testing)**
+```
+Request:  GET /mylink
+          ↓
+Response: 301 Moved Permanently
+          Location: https://example.com/target
+          ↓
+Shows:    Your actual redirect response
+```
+
+#### Alternative: Test in Browser
+
+Browsers automatically follow redirects, which is the real-world behavior:
+
+```
+1. Paste short URL in browser: https://YOUR_API_URL/mylink
+2. Browser receives 301 redirect
+3. Browser automatically navigates to target URL
+4. You see the target website
+```
+
+This is the expected user experience!
+
+#### Key Takeaways
+
+- **Postman default behavior** - Follows redirects automatically (like a browser)
+- **For API testing** - Disable redirects to verify your 301/302 response
+- **For user testing** - Use browser to verify end-to-end redirect flow
+- **404 in Postman** - Usually means redirect worked, but target URL returned 404
+- **Check Location header** - This shows where the redirect points to
+
+#### Common Scenarios
+
+| Scenario | Postman (Redirects ON) | Postman (Redirects OFF) |
+|----------|------------------------|-------------------------|
+| Valid short URL | 200 (target site) | 301 + Location header |
+| Invalid short URL | 404 (your API) | 404 (your API) |
+| Expired URL | 410 (your API) | 410 (your API) |
+| Target URL is 404 | 404 (target site) | 301 + Location header |
+
+---

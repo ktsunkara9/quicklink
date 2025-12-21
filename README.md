@@ -44,17 +44,20 @@ This repository focuses on **HLD → LLD → trade-offs**, making it suitable fo
 - [x] CDK API Gateway REST API (with throttling)
 - [x] IAM permissions (Lambda to DynamoDB)
 - [x] AWS Serverless Java Container integration (StreamLambdaHandler)
-- [x] Lambda-specific Spring profile (application-lambda.yml)
+- [x] Lambda-specific Spring profile (application-prod.yml)
 - [x] CDK synthesis successful (CloudFormation template generated)
-- [x] JAR build successful (mvnw clean package)
+- [x] Maven Shade plugin configuration (flat JAR for Lambda)
+- [x] JAR build successful (quicklink-1.0.0-aws.jar)
+- [x] Deployed to AWS (cdk deploy)
+- [x] Token counter initialized in DynamoDB
+- [x] End-to-end testing on AWS (POST /api/v1/shorten + GET /{shortCode})
+- [x] Verified 301 redirects working correctly
 
 ### 🔴 Pending
-- [ ] Deploy to AWS (cdk deploy)
-- [ ] Initialize token counter in DynamoDB
-- [ ] Test deployed endpoints on AWS
 - [ ] Analytics service (@Async)
 - [ ] SQS integration
 - [ ] Integration tests
+- [ ] Custom domain configuration
 
 
 ## ✨ Features
@@ -654,19 +657,20 @@ This project is licensed under the MIT License.
 ## 📋 TODO
 
 ### High Priority
-- [ ] Add integration tests (full stack testing)
-- [ ] Deploy to AWS (cdk deploy)
-- [ ] Initialize token counter in DynamoDB
-- [ ] Test end-to-end on AWS
+- [ ] Analytics service (@Async)
+- [ ] SQS integration for analytics
+- [ ] Integration tests (full stack testing)
 
 ### Medium Priority
-- [ ] Analytics service (@Async)
-- [ ] SQS integration
+- [ ] Demo UI (index.html with form + demo.html as redirect target)
 - [ ] Test end-to-end locally with DynamoDB Local
+- [ ] Performance testing and optimization
+- [ ] Add CloudWatch dashboards
 
 ### Low Priority
 - [ ] Configure custom domain: `https://skt.inc`
-- [ ] Performance testing and optimization
+- [ ] Add API authentication (Cognito)
+- [ ] Implement rate limiting per user
 
 ---
 
