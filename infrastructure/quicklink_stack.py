@@ -81,6 +81,12 @@ class QuickLinkStack(Stack):
         )
         
         CfnOutput(
+            self, "HealthEndpoint",
+            value=f"{self.api.url}api/v1/health",
+            description="Health check endpoint URL"
+        )
+        
+        CfnOutput(
             self, "LambdaFunctionName",
             value=self.quicklink_function.function_name,
             description="Lambda function name"
