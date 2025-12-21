@@ -8,6 +8,7 @@ import inc.skt.quicklink.exception.InvalidUrlException;
 import inc.skt.quicklink.exception.UrlExpiredException;
 import inc.skt.quicklink.exception.UrlNotFoundException;
 import inc.skt.quicklink.model.UrlMapping;
+import inc.skt.quicklink.service.AnalyticsService;
 import inc.skt.quicklink.service.UrlService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,6 +37,9 @@ class UrlControllerTest {
 
     @MockBean
     private UrlService urlService;
+    
+    @MockBean
+    private AnalyticsService analyticsService;
 
     // ========== Successful Request Tests ==========
 
@@ -232,6 +238,7 @@ class UrlControllerTest {
             0L
         );
         when(urlService.getOriginalUrl("abc1234")).thenReturn(urlMapping);
+        doNothing().when(analyticsService).recordClick(anyString(), anyString(), anyString());
 
         // When & Then
         mockMvc.perform(get("/abc1234"))
