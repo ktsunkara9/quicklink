@@ -168,7 +168,7 @@
      "S3Bucket": {
       "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-us-east-1"
      },
-     "S3Key": "07756a3f862e88bb36c3fd9ccba7e9289807ae0d663f34fef41410f3173d5686.jar"
+     "S3Key": "dc80f85d752762e2a7bf2430316d0f49a2565b3897a04e99b013b786ca974192.jar"
     },
     "Environment": {
      "Variables": {
@@ -199,7 +199,7 @@
    ],
    "Metadata": {
     "aws:cdk:path": "QuickLinkStack/QuickLinkFunction/Resource",
-    "aws:asset:path": "asset.07756a3f862e88bb36c3fd9ccba7e9289807ae0d663f34fef41410f3173d5686.jar",
+    "aws:asset:path": "asset.dc80f85d752762e2a7bf2430316d0f49a2565b3897a04e99b013b786ca974192.jar",
     "aws:asset:is-bundled": false,
     "aws:asset:property": "Code"
    }
