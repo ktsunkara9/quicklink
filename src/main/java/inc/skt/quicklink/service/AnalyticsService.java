@@ -34,10 +34,9 @@ public class AnalyticsService {
     }
     
     /**
-     * Records a click event asynchronously.
-     * Runs in background thread, does not block redirect response.
+     * Records a click event.
+     * Fire-and-forget pattern - errors are logged but don't affect redirect.
      */
-    @Async
     public void recordClick(String shortCode, String ipAddress, String userAgent) {
         logger.info("=== ANALYTICS START: shortCode={}, thread={}", shortCode, Thread.currentThread().getName());
         logger.info("=== ANALYTICS: queueUrl={}", queueUrl);

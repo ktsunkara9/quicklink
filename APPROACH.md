@@ -583,7 +583,7 @@ CDK caches Lambda deployment packages by content hash. If the JAR file path hasn
 # Update Lambda function code directly (run from project root)
 aws lambda update-function-code \
   --function-name quicklink-service \
-  --zip-file fileb://target/quicklink-1.0.0.jar
+  --zip-file fileb://target/quicklink-1.0.0-aws.jar
 
 # Wait for update to complete
 aws lambda wait function-updated \
