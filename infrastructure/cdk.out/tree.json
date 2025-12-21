@@ -289,7 +289,7 @@
                       "s3Bucket": {
                         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-us-east-1"
                       },
-                      "s3Key": "c04f7e97cfdbbe1a82190921a2b297748fe11951b1f72b66088bdc967b689fd3.jar"
+                      "s3Key": "07756a3f862e88bb36c3fd9ccba7e9289807ae0d663f34fef41410f3173d5686.jar"
                     },
                     "environment": {
                       "variables": {
@@ -823,6 +823,30 @@
             },
             "constructInfo": {
               "fqn": "aws-cdk-lib.aws_apigateway.LambdaRestApi",
+              "version": "2.100.0"
+            }
+          },
+          "ApiUrl": {
+            "id": "ApiUrl",
+            "path": "QuickLinkStack/ApiUrl",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.100.0"
+            }
+          },
+          "HealthEndpoint": {
+            "id": "HealthEndpoint",
+            "path": "QuickLinkStack/HealthEndpoint",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.100.0"
+            }
+          },
+          "LambdaFunctionName": {
+            "id": "LambdaFunctionName",
+            "path": "QuickLinkStack/LambdaFunctionName",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
               "version": "2.100.0"
             }
           },
