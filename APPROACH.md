@@ -555,3 +555,76 @@ public class TokenService {
 Static Spring context is a **performance optimization** that reduces cost and latency by reusing expensive initialization across multiple Lambda invocations within the same container lifecycle.
 
 ---
+
+### Force Lambda Code Update
+
+#### Problem
+CDK caches Lambda deployment packages by content hash. If the JAR file path hasn't changed, CDK may not detect that the JAR contents have been updated, causing Lambda to continue using the old code.
+
+#### Symptoms
+- `ClassNotFoundException` for newly added classes (e.g., StreamLambdaHandler)
+- JAR file locally contains the class, but Lambda doesn't
+- `cdk deploy` completes but Lambda code isn't updated
+
+#### Solution Options
+
+**Option 1: Direct Lambda Update (Fast - 2 minutes)**
+```bash
+# Update Lambda function code directly (run from project root)
+aws lambda update-function-code \
+  --function-name quicklink-service \
+  --zip-file fileb://target/quicklink-1.0.0.jar
+
+# Wait for update to complete
+aws lambda wait function-updated \
+  --function-name quicklink-service
+
+# Verify update
+aws lambda get-function --function-name quicklink-service --query 'Configuration.LastModified'
+
+# Check Lambda logs for errors
+aws logs tail /aws/lambda/quicklink-service --follow
+```
+
+**Option 2: Force CDK Redeployment (Clean - 10 minutes)**
+```bash
+cd infrastructure
+
+# Destroy and recreate stack
+cdk destroy
+cdk deploy
+```
+
+**Option 3: Change Asset Path (Workaround)**
+```python
+# In quicklink_stack.py, modify the code path to force new hash
+code=lambda_.Code.from_asset("../target/quicklink-1.0.0.jar")
+# Change to:
+code=lambda_.Code.from_asset("../target/quicklink-1.0.0.jar", exclude=["*.tmp"])
+```
+
+#### Recommended Approach
+
+Use **Option 1** for quick iterations during development:
+- Fastest (2 minutes vs 10 minutes)
+- Directly updates Lambda code
+- No infrastructure changes
+
+Use **Option 2** for clean deployments:
+- Ensures infrastructure is in sync
+- Useful when CDK stack has other changes
+- Recommended before production deployment
+
+#### Prevention
+
+To avoid this issue in future:
+1. Always run `mvn clean package` before `cdk deploy`
+2. Verify JAR timestamp: `ls -l target/quicklink-1.0.0.jar`
+3. Use `cdk diff` to check if Lambda code will be updated
+4. Consider using version numbers in JAR filename (e.g., `quicklink-1.0.1.jar`)
+
+#### Key Learning
+
+CDK's asset caching is efficient but can cause confusion during rapid development. Understanding when to use direct Lambda updates vs full CDK redeployment saves time and prevents deployment issues.
+
+---
