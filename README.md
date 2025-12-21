@@ -43,13 +43,18 @@ This repository focuses on **HLD → LLD → trade-offs**, making it suitable fo
 - [x] CDK Lambda function definition (Spring Boot, 512MB, 10s timeout)
 - [x] CDK API Gateway REST API (with throttling)
 - [x] IAM permissions (Lambda to DynamoDB)
+- [x] AWS Serverless Java Container integration (StreamLambdaHandler)
+- [x] Lambda-specific Spring profile (application-lambda.yml)
+- [x] CDK synthesis successful (CloudFormation template generated)
+- [x] JAR build successful (mvnw clean package)
 
 ### 🔴 Pending
+- [ ] Deploy to AWS (cdk deploy)
+- [ ] Initialize token counter in DynamoDB
+- [ ] Test deployed endpoints on AWS
 - [ ] Analytics service (@Async)
 - [ ] SQS integration
 - [ ] Integration tests
-- [ ] Deployment to AWS (cdk deploy)
-- [ ] Initialize token counter in DynamoDB
 
 
 ## ✨ Features
@@ -481,6 +486,9 @@ aws dynamodb get-item \
 ```
 
 #### Step 8: Test Deployment
+
+##### Option A: Using cURL
+
 ```bash
 # Get API Gateway URL from CloudFormation outputs
 aws cloudformation describe-stacks \
@@ -499,6 +507,41 @@ curl -X POST https://YOUR_API_URL/api/v1/shorten \
 # Test redirect (use shortCode from response)
 curl -L https://YOUR_API_URL/0000001
 ```
+
+##### Option B: Using Postman
+
+**1. Get API URL**
+```bash
+aws cloudformation describe-stacks \
+  --stack-name QuickLinkStack \
+  --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' \
+  --output text
+```
+
+**2. Test Health Check**
+- Method: `GET`
+- URL: `https://YOUR_API_URL/api/v1/health`
+- Expected: `200 OK` with JSON response
+
+**3. Test Create Short URL**
+- Method: `POST`
+- URL: `https://YOUR_API_URL/api/v1/shorten`
+- Headers: `Content-Type: application/json`
+- Body (raw JSON):
+```json
+{
+  "url": "https://example.com/test"
+}
+```
+- Expected: `201 Created` with shortCode
+
+**4. Test Redirect**
+- Method: `GET`
+- URL: `https://YOUR_API_URL/0000001` (use shortCode from step 3)
+- Postman Settings: Disable "Automatically follow redirects" to see 301 response
+- Expected: `301 Moved Permanently` with Location header
+
+**Note:** First request will take 5-10 seconds (Spring Boot cold start). Subsequent requests will be fast (~100-200ms).
 
 #### Useful CDK Commands
 ```bash

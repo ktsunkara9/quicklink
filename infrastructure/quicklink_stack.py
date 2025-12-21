@@ -3,6 +3,7 @@ from aws_cdk import (
     Stack,
     RemovalPolicy,
     Duration,
+    CfnOutput,
     aws_dynamodb as dynamodb,
     aws_lambda as lambda_,
     aws_apigateway as apigateway,
@@ -70,4 +71,17 @@ class QuickLinkStack(Stack):
                 throttling_rate_limit=100,
                 throttling_burst_limit=200
             )
+        )
+
+        # CloudFormation Outputs
+        CfnOutput(
+            self, "ApiUrl",
+            value=self.api.url,
+            description="API Gateway endpoint URL"
+        )
+        
+        CfnOutput(
+            self, "LambdaFunctionName",
+            value=self.quicklink_function.function_name,
+            description="Lambda function name"
         )
