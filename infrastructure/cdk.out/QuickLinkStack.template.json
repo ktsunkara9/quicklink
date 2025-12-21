@@ -168,7 +168,7 @@
      "S3Bucket": {
       "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-us-east-1"
      },
-     "S3Key": "c04f7e97cfdbbe1a82190921a2b297748fe11951b1f72b66088bdc967b689fd3.jar"
+     "S3Key": "07756a3f862e88bb36c3fd9ccba7e9289807ae0d663f34fef41410f3173d5686.jar"
     },
     "Environment": {
      "Variables": {
@@ -199,7 +199,7 @@
    ],
    "Metadata": {
     "aws:cdk:path": "QuickLinkStack/QuickLinkFunction/Resource",
-    "aws:asset:path": "asset.c04f7e97cfdbbe1a82190921a2b297748fe11951b1f72b66088bdc967b689fd3.jar",
+    "aws:asset:path": "asset.07756a3f862e88bb36c3fd9ccba7e9289807ae0d663f34fef41410f3173d5686.jar",
     "aws:asset:is-bundled": false,
     "aws:asset:property": "Code"
    }
@@ -594,6 +594,58 @@
       "/"
      ]
     ]
+   }
+  },
+  "ApiUrl": {
+   "Description": "API Gateway endpoint URL",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Ref": "QuickLinkApiD56CDA13"
+      },
+      ".execute-api.us-east-1.",
+      {
+       "Ref": "AWS::URLSuffix"
+      },
+      "/",
+      {
+       "Ref": "QuickLinkApiDeploymentStageprod7314C208"
+      },
+      "/"
+     ]
+    ]
+   }
+  },
+  "HealthEndpoint": {
+   "Description": "Health check endpoint URL",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Ref": "QuickLinkApiD56CDA13"
+      },
+      ".execute-api.us-east-1.",
+      {
+       "Ref": "AWS::URLSuffix"
+      },
+      "/",
+      {
+       "Ref": "QuickLinkApiDeploymentStageprod7314C208"
+      },
+      "/api/v1/health"
+     ]
+    ]
+   }
+  },
+  "LambdaFunctionName": {
+   "Description": "Lambda function name",
+   "Value": {
+    "Ref": "QuickLinkFunctionF980CCA4"
    }
   }
  },

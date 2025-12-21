@@ -18,7 +18,7 @@
         "validateOnSynth": false,
         "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-deploy-role-${AWS::AccountId}-us-east-1",
         "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-cfn-exec-role-${AWS::AccountId}-us-east-1",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-us-east-1/6ef0b2db628385d3e3eca144d8f7c5ccde31d5e72d35f6c7abce7ca3e9393ac3.json",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-us-east-1/5b03fef42816ffbeb166550ada9b4bcdc6d133f6a557bae46904aaad0ae20e9f.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
         "additionalDependencies": [
@@ -156,6 +156,24 @@
           {
             "type": "aws:cdk:logicalId",
             "data": "QuickLinkApiANY24DF4DF4"
+          }
+        ],
+        "/QuickLinkStack/ApiUrl": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiUrl"
+          }
+        ],
+        "/QuickLinkStack/HealthEndpoint": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "HealthEndpoint"
+          }
+        ],
+        "/QuickLinkStack/LambdaFunctionName": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LambdaFunctionName"
           }
         ],
         "/QuickLinkStack/CDKMetadata/Default": [

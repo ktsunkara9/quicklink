@@ -558,6 +558,16 @@ Static Spring context is a **performance optimization** that reduces cost and la
 
 ### Force Lambda Code Update
 
+
+2025-12-21T07:19:29.233Z
+Class not found: inc.skt.quicklink.StreamLambdaHandler: java.lang.ClassNotFoundException
+java.lang.ClassNotFoundException: inc.skt.quicklink.StreamLambdaHandler
+	at java.base/java.net.URLClassLoader.findClass(Unknown Source)
+	at java.base/java.lang.ClassLoader.loadClass(Unknown Source)
+	at java.base/java.lang.ClassLoader.loadClass(Unknown Source)
+	at java.base/java.lang.Class.forName0(Native Method)
+	at java.base/java.lang.Class.forName(Unknown Source)
+
 #### Problem
 CDK caches Lambda deployment packages by content hash. If the JAR file path hasn't changed, CDK may not detect that the JAR contents have been updated, causing Lambda to continue using the old code.
 
