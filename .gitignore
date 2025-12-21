@@ -60,14 +60,6 @@ samconfig.toml
 *.pem
 *.key
 
-# CDK (Python)
-infrastructure/.venv/
-infrastructure/__pycache__/
-infrastructure/*.egg-info/
-infrastructure/cdk.out/
-infrastructure/.pytest_cache/
-infrastructure/*.pyc
-
 # Environment variables
 .env
 .env.local
