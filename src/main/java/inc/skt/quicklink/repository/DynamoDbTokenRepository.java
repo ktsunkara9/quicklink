@@ -17,7 +17,7 @@ import java.util.Map;
  * Provides thread-safe, distributed counter for ID generation.
  */
 @Repository
-@Profile({"prod", "aws"})
+@Profile("prod")
 public class DynamoDbTokenRepository implements TokenRepository {
     
     private final DynamoDbClient dynamoDbClient;

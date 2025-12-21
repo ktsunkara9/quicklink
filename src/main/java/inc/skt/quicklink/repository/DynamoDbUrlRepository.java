@@ -16,7 +16,7 @@ import java.util.Optional;
  * Provides CRUD operations for URL mappings in DynamoDB.
  */
 @Repository
-@Profile({"prod", "aws"})
+@Profile("prod")
 public class DynamoDbUrlRepository implements UrlRepository {
     
     private final DynamoDbTable<UrlMapping> table;
