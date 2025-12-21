@@ -53,10 +53,15 @@ This repository focuses on **HLD → LLD → trade-offs**, making it suitable fo
 - [x] End-to-end testing on AWS (POST /api/v1/shorten + GET /{shortCode})
 - [x] Verified 301 redirects working correctly
 
+- [x] Analytics service (synchronous for Lambda compatibility)
+- [x] SQS integration for analytics
+- [x] AnalyticsEvent DTO
+- [x] AnalyticsService with fire-and-forget pattern
+- [x] SQS queue in CDK infrastructure
+- [x] End-to-end analytics testing (verified messages in SQS)
+
 ### 🔴 Pending
-- [ ] Analytics service (@Async)
-- [ ] SQS integration
-- [ ] Integration tests
+- [ ] Integration tests (full stack testing)
 - [ ] Custom domain configuration
 
 
@@ -65,7 +70,7 @@ This repository focuses on **HLD → LLD → trade-offs**, making it suitable fo
 - **Redirect short URLs to original URLs**
 - **Collision-free short code generation**
 - **Horizontally scalable architecture**
-- **Asynchronous analytics collection**
+- **Analytics collection via SQS**
 - **Fully serverless AWS deployment**
 - **Designed for long-term scale**
 
@@ -120,7 +125,7 @@ Fully serverless, AWS-native architecture.
   - TokenService (in-process) allocates unique ID ranges (100 IDs at a time)
   - Uses DynamoDB atomic increment (ADD operation)
   - Caches allocated range in Lambda memory
-  - Publishes analytics events asynchronously to SQS using @Async
+  - Publishes analytics events to SQS (synchronous for Lambda compatibility)
 
 ### Data Layer
 - **DynamoDB – URL Mapping Table**
@@ -657,9 +662,8 @@ This project is licensed under the MIT License.
 ## 📋 TODO
 
 ### High Priority
-- [ ] Analytics service (@Async)
-- [ ] SQS integration for analytics
 - [ ] Integration tests (full stack testing)
+- [ ] SQS consumer Lambda (process analytics events)
 
 ### Medium Priority
 - [ ] Demo UI (index.html with form + demo.html as redirect target)
