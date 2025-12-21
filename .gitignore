@@ -60,6 +60,11 @@ samconfig.toml
 *.pem
 *.key
 
+# CDK Python
+infrastructure/.venv/
+infrastructure/__pycache__/
+infrastructure/*.pyc
+
 # Environment variables
 .env
 .env.local
