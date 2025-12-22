@@ -400,7 +400,7 @@ class UrlControllerTest {
             1704067200L,
             1706659200L
         );
-        when(urlService.updateUrl("abc1234", request)).thenReturn(response);
+        when(urlService.updateUrl(anyString(), any(UpdateUrlRequest.class))).thenReturn(response);
 
         // When & Then
         mockMvc.perform(patch("/api/v1/urls/abc1234")
@@ -422,7 +422,7 @@ class UrlControllerTest {
             1704067200L,
             null
         );
-        when(urlService.updateUrl("abc1234", request)).thenReturn(response);
+        when(urlService.updateUrl(anyString(), any(UpdateUrlRequest.class))).thenReturn(response);
 
         // When & Then
         mockMvc.perform(patch("/api/v1/urls/abc1234")
@@ -436,7 +436,7 @@ class UrlControllerTest {
     void should_return404NotFound_when_patchCalledOnNonExistentUrl() throws Exception {
         // Given
         UpdateUrlRequest request = new UpdateUrlRequest(30);
-        when(urlService.updateUrl("nonexistent", request))
+        when(urlService.updateUrl(anyString(), any(UpdateUrlRequest.class)))
             .thenThrow(new UrlNotFoundException("Short URL not found: nonexistent"));
 
         // When & Then
@@ -451,7 +451,7 @@ class UrlControllerTest {
     void should_return400BadRequest_when_invalidExpiryProvided() throws Exception {
         // Given
         UpdateUrlRequest request = new UpdateUrlRequest(400);
-        when(urlService.updateUrl("abc1234", request))
+        when(urlService.updateUrl(anyString(), any(UpdateUrlRequest.class)))
             .thenThrow(new InvalidUrlException("Expiry must be between 1 and 365 days"));
 
         // When & Then
