@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestMethod;
 
 import java.net.URI;
 
@@ -21,6 +22,7 @@ import java.net.URI;
  * - Redirect endpoint (GET /{shortCode}) has no version to keep URLs short and stable
  */
 @RestController
+@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.OPTIONS})
 @Tag(name = "URL Shortener", description = "URL shortening operations")
 public class UrlController {
     
