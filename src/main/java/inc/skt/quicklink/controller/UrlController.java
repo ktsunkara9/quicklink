@@ -47,10 +47,15 @@ public class UrlController {
      * Redirects short URL to original URL.
      * Records analytics asynchronously without blocking redirect.
      * GET /{shortCode}
+     * Excludes paths with file extensions (e.g., .html, .css, .js) to allow static resources.
      */
-    @GetMapping("/{shortCode}")
+    @GetMapping(value = "/{shortCode}", produces = "!text/html")
     @Operation(summary = "Redirect to original URL", description = "Redirects short URL to the original long URL")
     public ResponseEntity<Void> redirect(@PathVariable String shortCode, HttpServletRequest request) {
+        // Reject requests with file extensions (static resources)
+        if (shortCode.contains(".")) {
+            return ResponseEntity.notFound().build();
+        }
         UrlMapping urlMapping = urlService.getOriginalUrl(shortCode);
         
         // Record analytics asynchronously (non-blocking)
