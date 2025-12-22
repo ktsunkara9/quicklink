@@ -3,6 +3,7 @@ package inc.skt.quicklink.controller;
 import inc.skt.quicklink.dto.ShortenRequest;
 import inc.skt.quicklink.dto.ShortenResponse;
 import inc.skt.quicklink.dto.UpdateUrlRequest;
+import inc.skt.quicklink.dto.UrlStatsResponse;
 import inc.skt.quicklink.model.UrlMapping;
 import inc.skt.quicklink.service.AnalyticsService;
 import inc.skt.quicklink.service.UrlService;
@@ -93,5 +94,16 @@ public class UrlController {
     public ResponseEntity<Void> deleteUrl(@PathVariable String shortCode) {
         urlService.deleteUrl(shortCode);
         return ResponseEntity.noContent().build();
+    }
+    
+    /**
+     * Retrieves statistics for a short URL.
+     * GET /api/v1/stats/{shortCode}
+     */
+    @GetMapping("/api/v1/stats/{shortCode}")
+    @Operation(summary = "Get URL statistics", description = "Retrieves click count and metadata for a short URL")
+    public ResponseEntity<UrlStatsResponse> getStats(@PathVariable String shortCode) {
+        UrlStatsResponse response = urlService.getUrlStats(shortCode);
+        return ResponseEntity.ok(response);
     }
 }

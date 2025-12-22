@@ -3,6 +3,7 @@ package inc.skt.quicklink.service;
 import inc.skt.quicklink.dto.ShortenRequest;
 import inc.skt.quicklink.dto.ShortenResponse;
 import inc.skt.quicklink.dto.UpdateUrlRequest;
+import inc.skt.quicklink.dto.UrlStatsResponse;
 import inc.skt.quicklink.exception.AliasAlreadyExistsException;
 import inc.skt.quicklink.exception.InvalidAliasException;
 import inc.skt.quicklink.exception.InvalidUrlException;
@@ -274,5 +275,24 @@ public class UrlService {
         urlRepository.softDelete(shortCode);
         
         log.info("URL soft deleted: {}", shortCode);
+    }
+    
+    /**
+     * Retrieves statistics for a given short code.
+     */
+    public UrlStatsResponse getUrlStats(String shortCode) {
+        log.debug("Retrieving stats for shortCode: {}", shortCode);
+        
+        UrlMapping urlMapping = urlRepository.findByShortCode(shortCode)
+                .orElseThrow(() -> new UrlNotFoundException("Short URL not found: " + shortCode));
+        
+        return new UrlStatsResponse(
+            urlMapping.getShortCode(),
+            urlMapping.getLongUrl(),
+            urlMapping.getClickCount(),
+            urlMapping.getCreatedAt(),
+            urlMapping.getExpiresAt(),
+            urlMapping.getIsActive()
+        );
     }
 }
