@@ -22,7 +22,6 @@ import java.net.URI;
  * - Redirect endpoint (GET /{shortCode}) has no version to keep URLs short and stable
  */
 @RestController
-@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.OPTIONS})
 @Tag(name = "URL Shortener", description = "URL shortening operations")
 public class UrlController {
     
@@ -42,38 +41,17 @@ public class UrlController {
     @Operation(summary = "Create short URL", description = "Converts a long URL into a short URL")
     public ResponseEntity<ShortenResponse> shortenUrl(@RequestBody ShortenRequest request) {
         ShortenResponse response = urlService.createShortUrl(request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .header("Access-Control-Allow-Origin", "*")
-                .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-                .header("Access-Control-Allow-Headers", "*")
-                .body(response);
-    }
-    
-    /**
-     * Handle CORS preflight requests.
-     */
-    @RequestMapping(method = RequestMethod.OPTIONS, value = "/api/v1/shorten")
-    public ResponseEntity<Void> handleOptions() {
-        return ResponseEntity.ok()
-                .header("Access-Control-Allow-Origin", "*")
-                .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-                .header("Access-Control-Allow-Headers", "*")
-                .build();
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     
     /**
      * Redirects short URL to original URL.
      * Records analytics asynchronously without blocking redirect.
      * GET /{shortCode}
-     * Excludes paths with file extensions (e.g., .html, .css, .js) to allow static resources.
      */
-    @GetMapping(value = "/{shortCode}", produces = "!text/html")
+    @GetMapping("/{shortCode}")
     @Operation(summary = "Redirect to original URL", description = "Redirects short URL to the original long URL")
     public ResponseEntity<Void> redirect(@PathVariable String shortCode, HttpServletRequest request) {
-        // Reject requests with file extensions (static resources)
-        if (shortCode.contains(".")) {
-            return ResponseEntity.notFound().build();
-        }
         UrlMapping urlMapping = urlService.getOriginalUrl(shortCode);
         
         // Record analytics asynchronously (non-blocking)

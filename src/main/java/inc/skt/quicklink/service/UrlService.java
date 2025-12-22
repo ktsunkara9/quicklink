@@ -27,7 +27,7 @@ public class UrlService {
     private final UrlRepository urlRepository;
     private final TokenService tokenService;
     
-    @Value("${app.short-domain:https://skt.inc}")
+    @Value("${app.short-domain}")
     private String shortDomain;
     
     public UrlService(UrlRepository urlRepository, TokenService tokenService) {
