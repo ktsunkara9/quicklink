@@ -283,8 +283,9 @@
     </div>
 
     <script>
-        // Use relative URL - works for both local and AWS deployment
-        const API_URL = window.location.origin;
+        // Extract base path including stage (e.g., /prod)
+        const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+        const API_URL = window.location.origin + basePath;
 
         const form = document.getElementById('shortenForm');
         const submitBtn = document.getElementById('submitBtn');
