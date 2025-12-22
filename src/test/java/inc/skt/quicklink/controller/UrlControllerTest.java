@@ -1,5 +1,6 @@
 package inc.skt.quicklink.controller;
 
+import inc.skt.quicklink.config.WebConfig;
 import inc.skt.quicklink.dto.ShortenRequest;
 import inc.skt.quicklink.dto.ShortenResponse;
 import inc.skt.quicklink.exception.AliasAlreadyExistsException;
@@ -26,7 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(UrlController.class)
+@WebMvcTest(controllers = UrlController.class, excludeAutoConfiguration = WebConfig.class)
 class UrlControllerTest {
 
     @Autowired
