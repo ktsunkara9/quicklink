@@ -662,26 +662,28 @@ This project is licensed under the MIT License.
 ## 📋 TODO
 
 ### High Priority
+- [ ] API Authentication (AWS Cognito or API Keys)
+- [ ] Rate limiting (per user/IP)
+- [ ] Request throttling (API Gateway usage plans)
 - [ ] Integration tests (full stack testing)
-- [ ] SQS consumer Lambda (process analytics events)
 
 ### Medium Priority
 - [ ] Demo UI (index.html with form + demo.html as redirect target)
-- [ ] Test end-to-end locally with DynamoDB Local
-- [ ] Performance testing and optimization
-- [ ] Add CloudWatch dashboards
+- [ ] CloudWatch dashboards (metrics visualization)
+- [ ] Structured JSON logging
+- [ ] Bot detection and prevention
+- [ ] Performance testing and load testing
 
 ### Low Priority
-- [ ] Configure custom domain: `https://skt.inc`
-- [ ] Add API authentication (Cognito)
-- [ ] Implement rate limiting per user/IP
-- [ ] Bot detection and prevention
+- [ ] SQS consumer Lambda (process analytics events)
+- [ ] Custom domain configuration: `https://skt.inc`
+- [ ] Test end-to-end locally with DynamoDB Local
+- [ ] API versioning strategy documentation
+- [ ] Backup and disaster recovery plan
 
 ---
 
 ## 👤 Author
 
 Built as a learning project to demonstrate system design and AWS serverless architecture.
-
-python -c "import aws_cdk as cdk; from quicklink_stack import QuickLinkStack; app = cdk.App(); QuickLinkStack(app, 'QuickLinkStack', env=cdk.Environment(region='us-east-1')); print('Synthesizing...'); result = app.synth(); print(f'Done! Assembly: {result.directory}')"
 
