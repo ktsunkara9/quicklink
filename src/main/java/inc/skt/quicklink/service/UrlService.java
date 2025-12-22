@@ -58,7 +58,7 @@ public class UrlService {
         String effectiveDomain = (baseUrl != null && !baseUrl.isEmpty()) ? baseUrl : shortDomain;
         
         // Fail-fast: Validate URL first (before any expensive operations)
-        validateUrl(request.getUrl());
+        validateUrl(request.getUrl(), effectiveDomain);
         validateExpiry(request.getExpiryInDays());
         
         String shortCode;
@@ -130,7 +130,7 @@ public class UrlService {
      * Validates URL format and constraints.
      * Fail-fast validation - throws exception immediately if invalid.
      */
-    private void validateUrl(String url) {
+    private void validateUrl(String url, String effectiveDomain) {
         // Check 1: Null or empty
         if (url == null || url.trim().isEmpty()) {
             throw new InvalidUrlException("URL cannot be empty");
