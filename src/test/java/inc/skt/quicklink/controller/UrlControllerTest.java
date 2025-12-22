@@ -55,7 +55,7 @@ class UrlControllerTest {
             1704067200L,
             null
         );
-        when(urlService.createShortUrl(any(ShortenRequest.class))).thenReturn(response);
+        when(urlService.createShortUrl(any(ShortenRequest.class), anyString())).thenReturn(response);
 
         // When & Then
         mockMvc.perform(post("/api/v1/shorten")
@@ -80,7 +80,7 @@ class UrlControllerTest {
             1704067200L,
             null
         );
-        when(urlService.createShortUrl(any(ShortenRequest.class))).thenReturn(response);
+        when(urlService.createShortUrl(any(ShortenRequest.class), anyString())).thenReturn(response);
 
         // When & Then
         mockMvc.perform(post("/api/v1/shorten")
@@ -102,7 +102,7 @@ class UrlControllerTest {
             1704067200L,
             1706659200L
         );
-        when(urlService.createShortUrl(any(ShortenRequest.class))).thenReturn(response);
+        when(urlService.createShortUrl(any(ShortenRequest.class), anyString())).thenReturn(response);
 
         // When & Then
         mockMvc.perform(post("/api/v1/shorten")
@@ -118,7 +118,7 @@ class UrlControllerTest {
     void should_return400BadRequest_when_urlIsInvalid() throws Exception {
         // Given
         ShortenRequest request = new ShortenRequest("", null);
-        when(urlService.createShortUrl(any(ShortenRequest.class)))
+        when(urlService.createShortUrl(any(ShortenRequest.class), anyString()))
             .thenThrow(new InvalidUrlException("URL cannot be empty"));
 
         // When & Then
@@ -134,7 +134,7 @@ class UrlControllerTest {
     void should_return400BadRequest_when_aliasIsInvalid() throws Exception {
         // Given
         ShortenRequest request = new ShortenRequest("https://example.com", "ab");
-        when(urlService.createShortUrl(any(ShortenRequest.class)))
+        when(urlService.createShortUrl(any(ShortenRequest.class), anyString()))
             .thenThrow(new InvalidAliasException("Custom alias must be at least 3 characters"));
 
         // When & Then
@@ -150,7 +150,7 @@ class UrlControllerTest {
     void should_return409Conflict_when_aliasAlreadyExists() throws Exception {
         // Given
         ShortenRequest request = new ShortenRequest("https://example.com", "mylink");
-        when(urlService.createShortUrl(any(ShortenRequest.class)))
+        when(urlService.createShortUrl(any(ShortenRequest.class), anyString()))
             .thenThrow(new AliasAlreadyExistsException("Custom alias 'mylink' is already in use"));
 
         // When & Then
@@ -175,7 +175,7 @@ class UrlControllerTest {
             1704067200L,
             1706659200L
         );
-        when(urlService.createShortUrl(any(ShortenRequest.class))).thenReturn(response);
+        when(urlService.createShortUrl(any(ShortenRequest.class), anyString())).thenReturn(response);
 
         // When & Then
         mockMvc.perform(post("/api/v1/shorten")
@@ -190,7 +190,7 @@ class UrlControllerTest {
     void should_return500InternalServerError_when_unexpectedErrorOccurs() throws Exception {
         // Given
         ShortenRequest request = new ShortenRequest("https://example.com", null);
-        when(urlService.createShortUrl(any(ShortenRequest.class)))
+        when(urlService.createShortUrl(any(ShortenRequest.class), anyString()))
             .thenThrow(new RuntimeException("Unexpected error"));
 
         // When & Then
@@ -213,7 +213,7 @@ class UrlControllerTest {
             1704067200L,
             null
         );
-        when(urlService.createShortUrl(any(ShortenRequest.class))).thenReturn(response);
+        when(urlService.createShortUrl(any(ShortenRequest.class), anyString())).thenReturn(response);
 
         // When & Then
         mockMvc.perform(post("/api/v1/shorten")
