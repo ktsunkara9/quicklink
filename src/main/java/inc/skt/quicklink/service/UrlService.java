@@ -2,6 +2,7 @@ package inc.skt.quicklink.service;
 
 import inc.skt.quicklink.dto.ShortenRequest;
 import inc.skt.quicklink.dto.ShortenResponse;
+import inc.skt.quicklink.dto.UpdateUrlRequest;
 import inc.skt.quicklink.exception.AliasAlreadyExistsException;
 import inc.skt.quicklink.exception.InvalidAliasException;
 import inc.skt.quicklink.exception.InvalidUrlException;
@@ -219,5 +220,55 @@ public class UrlService {
                lowerAlias.equals("stats") || 
                lowerAlias.equals("api") || 
                lowerAlias.equals("admin");
+    }
+    
+    /**
+     * Updates the expiry time for an existing URL.
+     */
+    public ShortenResponse updateUrl(String shortCode, UpdateUrlRequest request) {
+        log.debug("Updating expiry for shortCode: {}", shortCode);
+        
+        // Validate expiry if provided
+        validateExpiry(request.getExpiryInDays());
+        
+        // Check if URL exists
+        UrlMapping existing = urlRepository.findByShortCode(shortCode)
+                .orElseThrow(() -> new UrlNotFoundException("Short URL not found: " + shortCode));
+        
+        // Calculate new expiresAt
+        Long expiresAt = null;
+        if (request.getExpiryInDays() != null) {
+            long now = System.currentTimeMillis() / 1000;
+            expiresAt = now + (request.getExpiryInDays() * 24L * 60L * 60L);
+        }
+        
+        // Update expiry
+        urlRepository.updateExpiry(shortCode, expiresAt);
+        
+        log.info("URL updated: {} - new expiry: {}", shortCode, expiresAt);
+        
+        // Return updated response
+        return new ShortenResponse(
+            shortCode,
+            shortDomain + "/" + shortCode,
+            existing.getLongUrl(),
+            existing.getCreatedAt(),
+            expiresAt
+        );
+    }
+    
+    /**
+     * Soft deletes a URL by setting isActive to false.
+     */
+    public void deleteUrl(String shortCode) {
+        log.debug("Soft deleting shortCode: {}", shortCode);
+        
+        // Check if URL exists
+        urlRepository.findByShortCode(shortCode)
+                .orElseThrow(() -> new UrlNotFoundException("Short URL not found: " + shortCode));
+        
+        urlRepository.softDelete(shortCode);
+        
+        log.info("URL soft deleted: {}", shortCode);
     }
 }

@@ -35,7 +35,18 @@ public class InMemoryUrlRepository implements UrlRepository {
     }
     
     @Override
-    public void deleteByShortCode(String shortCode) {
-        storage.remove(shortCode);
+    public void softDelete(String shortCode) {
+        UrlMapping existing = storage.get(shortCode);
+        if (existing != null) {
+            existing.setIsActive(false);
+        }
+    }
+    
+    @Override
+    public void updateExpiry(String shortCode, Long expiresAt) {
+        UrlMapping existing = storage.get(shortCode);
+        if (existing != null) {
+            existing.setExpiresAt(expiresAt);
+        }
     }
 }

@@ -52,17 +52,29 @@ This repository focuses on **HLD → LLD → trade-offs**, making it suitable fo
 - [x] Token counter initialized in DynamoDB
 - [x] End-to-end testing on AWS (POST /api/v1/shorten + GET /{shortCode})
 - [x] Verified 301 redirects working correctly
-
 - [x] Analytics service (synchronous for Lambda compatibility)
 - [x] SQS integration for analytics
 - [x] AnalyticsEvent DTO
 - [x] AnalyticsService with fire-and-forget pattern
 - [x] SQS queue in CDK infrastructure
 - [x] End-to-end analytics testing (verified messages in SQS)
+- [x] Demo UI (index.html with form for creating short URLs)
+- [x] HomeController to serve static HTML in Lambda
+- [x] Dynamic base URL extraction (includes /prod stage)
 
 ### 🔴 Pending
+- [ ] API Authentication (AWS Cognito or API Keys)
+- [ ] Rate limiting (per user/IP)
+- [ ] Request throttling (API Gateway usage plans)
 - [ ] Integration tests (full stack testing)
-- [ ] Custom domain configuration
+- [ ] CloudWatch dashboards (metrics visualization)
+- [ ] Structured JSON logging
+- [ ] Bot detection and prevention
+- [ ] Performance testing and load testing
+- [ ] SQS consumer Lambda (process analytics events)
+- [ ] Test end-to-end locally with DynamoDB Local
+- [ ] API versioning strategy documentation
+- [ ] Backup and disaster recovery plan
 
 
 ## ✨ Features
@@ -659,29 +671,7 @@ This project is licensed under the MIT License.
 
 ---
 
-## 📋 TODO
 
-### High Priority
-- [ ] API Authentication (AWS Cognito or API Keys)
-- [ ] Rate limiting (per user/IP)
-- [ ] Request throttling (API Gateway usage plans)
-- [ ] Integration tests (full stack testing)
-
-### Medium Priority
-- [ ] Demo UI (index.html with form + demo.html as redirect target)
-- [ ] CloudWatch dashboards (metrics visualization)
-- [ ] Structured JSON logging
-- [ ] Bot detection and prevention
-- [ ] Performance testing and load testing
-
-### Low Priority
-- [ ] SQS consumer Lambda (process analytics events)
-- [ ] Custom domain configuration: `https://skt.inc`
-- [ ] Test end-to-end locally with DynamoDB Local
-- [ ] API versioning strategy documentation
-- [ ] Backup and disaster recovery plan
-
----
 
 ## 👤 Author
 

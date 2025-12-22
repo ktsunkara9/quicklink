@@ -2,6 +2,7 @@ package inc.skt.quicklink.controller;
 
 import inc.skt.quicklink.dto.ShortenRequest;
 import inc.skt.quicklink.dto.ShortenResponse;
+import inc.skt.quicklink.dto.UpdateUrlRequest;
 import inc.skt.quicklink.model.UrlMapping;
 import inc.skt.quicklink.service.AnalyticsService;
 import inc.skt.quicklink.service.UrlService;
@@ -68,5 +69,29 @@ public class UrlController {
         return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY)
                 .location(URI.create(urlMapping.getLongUrl()))
                 .build();
+    }
+    
+    /**
+     * Updates URL properties (expiry time).
+     * PATCH /api/v1/urls/{shortCode}
+     */
+    @PatchMapping("/api/v1/urls/{shortCode}")
+    @Operation(summary = "Update URL", description = "Updates URL properties like expiry time")
+    public ResponseEntity<ShortenResponse> updateUrl(
+            @PathVariable String shortCode,
+            @RequestBody UpdateUrlRequest request) {
+        ShortenResponse response = urlService.updateUrl(shortCode, request);
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Soft deletes a URL by setting isActive to false.
+     * DELETE /api/v1/urls/{shortCode}
+     */
+    @DeleteMapping("/api/v1/urls/{shortCode}")
+    @Operation(summary = "Delete URL", description = "Soft deletes a URL by deactivating it")
+    public ResponseEntity<Void> deleteUrl(@PathVariable String shortCode) {
+        urlService.deleteUrl(shortCode);
+        return ResponseEntity.noContent().build();
     }
 }

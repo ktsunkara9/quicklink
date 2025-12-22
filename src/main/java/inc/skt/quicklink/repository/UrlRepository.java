@@ -38,5 +38,13 @@ public interface UrlRepository {
      * 
      * @param shortCode Short code of the mapping to delete
      */
-    void deleteByShortCode(String shortCode);
+    void softDelete(String shortCode);
+    
+    /**
+     * Update expiry time for a URL mapping.
+     * 
+     * @param shortCode Short code of the mapping to update
+     * @param expiresAt New expiry timestamp (null to remove expiry)
+     */
+    void updateExpiry(String shortCode, Long expiresAt);
 }

@@ -8,7 +8,11 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.UpdateItemEnhancedRequest;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -45,8 +49,20 @@ public class DynamoDbUrlRepository implements UrlRepository {
     }
     
     @Override
-    public void deleteByShortCode(String shortCode) {
-        Key key = Key.builder().partitionValue(shortCode).build();
-        table.deleteItem(key);
+    public void softDelete(String shortCode) {
+        UrlMapping existing = findByShortCode(shortCode)
+                .orElseThrow(() -> new RuntimeException("URL not found: " + shortCode));
+        
+        existing.setIsActive(false);
+        table.updateItem(existing);
+    }
+    
+    @Override
+    public void updateExpiry(String shortCode, Long expiresAt) {
+        UrlMapping existing = findByShortCode(shortCode)
+                .orElseThrow(() -> new RuntimeException("URL not found: " + shortCode));
+        
+        existing.setExpiresAt(expiresAt);
+        table.updateItem(existing);
     }
 }
