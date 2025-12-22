@@ -47,4 +47,11 @@ public interface UrlRepository {
      * @param expiresAt New expiry timestamp (null to remove expiry)
      */
     void updateExpiry(String shortCode, Long expiresAt);
+    
+    /**
+     * Increment click count for a URL mapping.
+     * 
+     * @param shortCode Short code of the mapping to increment
+     */
+    void incrementClickCount(String shortCode);
 }

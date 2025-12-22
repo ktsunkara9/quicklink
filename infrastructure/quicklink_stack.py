@@ -82,8 +82,8 @@ class QuickLinkStack(Stack):
             binary_media_types=["*/*"],
             deploy_options=apigateway.StageOptions(
                 stage_name="prod",
-                throttling_rate_limit=100,
-                throttling_burst_limit=200
+                throttling_rate_limit=50,
+                throttling_burst_limit=100
             )
         )
 

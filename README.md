@@ -61,20 +61,40 @@ This repository focuses on **HLD → LLD → trade-offs**, making it suitable fo
 - [x] Demo UI (index.html with form for creating short URLs)
 - [x] HomeController to serve static HTML in Lambda
 - [x] Dynamic base URL extraction (includes /prod stage)
+- [x] UpdateUrlRequest DTO for PATCH endpoint
+- [x] PATCH /api/v1/urls/{shortCode} endpoint (update expiry)
+- [x] DELETE /api/v1/urls/{shortCode} endpoint (soft delete)
+- [x] Soft delete implementation (sets isActive=false)
+- [x] Repository methods for updateExpiry and softDelete
+- [x] End-to-end testing of PATCH and DELETE on AWS
+- [x] Request throttling (API Gateway - 50 req/s rate, 100 burst limit)
+- [x] Click count tracking (atomic DynamoDB ADD operation)
+- [x] UrlRepository.incrementClickCount() method
+- [x] Click count increment on every redirect
 
 ### 🔴 Pending
 - [ ] API Authentication (AWS Cognito or API Keys)
-- [ ] Rate limiting (per user/IP)
-- [ ] Request throttling (API Gateway usage plans)
+- [ ] Rate limiting with usage plans (per-user quotas, API keys)
 - [ ] Integration tests (full stack testing)
 - [ ] CloudWatch dashboards (metrics visualization)
-- [ ] Structured JSON logging
 - [ ] Bot detection and prevention
 - [ ] Performance testing and load testing
 - [ ] SQS consumer Lambda (process analytics events)
 - [ ] Test end-to-end locally with DynamoDB Local
 - [ ] API versioning strategy documentation
 - [ ] Backup and disaster recovery plan
+
+### 🔮 Future Enhancements
+- [ ] Structured JSON logging (CloudWatch Logs Insights)
+- [ ] URL caching layer (ElastiCache/Redis for hot URLs)
+- [ ] Custom domain support (Route 53 + CloudFront)
+- [ ] QR code generation for short URLs
+- [ ] Bulk URL shortening API
+- [ ] URL preview/metadata extraction
+- [ ] Geographic analytics (country/city-level)
+- [ ] A/B testing support (multiple destinations)
+- [ ] Scheduled URL activation/deactivation
+- [ ] Webhook notifications for URL events
 
 
 ## ✨ Features
@@ -250,7 +270,34 @@ Response: 301 Moved Permanently
 Location: https://example.com/very/long/url
 ```
 
-### 4. Get URL Statistics (Future)
+### 4. Update URL Expiry
+```http
+PATCH /api/v1/urls/{shortCode}
+Content-Type: application/json
+
+Request:
+{
+  "expiryInDays": 30  // 1-365 days, or null to remove expiry
+}
+
+Response: 200 OK
+{
+  "shortCode": "aB3xY9z",
+  "shortUrl": "https://skt.inc/aB3xY9z",
+  "longUrl": "https://example.com/very/long/url",
+  "createdAt": 1704067200,
+  "expiresAt": 1706659200
+}
+```
+
+### 5. Delete URL (Soft Delete)
+```http
+DELETE /api/v1/urls/{shortCode}
+
+Response: 204 No Content
+```
+
+### 6. Get URL Statistics (Future)
 ```http
 GET /api/v1/stats/{shortCode}
 
@@ -579,9 +626,9 @@ curl https://YOUR_API_URL/v3/api-docs > openapi.json
 - **Insomnia**: Import → From File
 
 **Note:** 
-- Swagger UI doesn't work reliably on Lambda due to static resource serving issues
+- Swagger UI doesn't work on Lambda with AWS Serverless Java Container due to WebJar static resource serving limitations
 - OpenAPI spec export works perfectly and can be used with external tools
-- For interactive API testing on AWS, use Postman or cURL
+- For interactive API testing on AWS, use Postman or cURL (recommended)
 - Swagger UI works great for local development (http://localhost:8080/swagger-ui.html)
 
 #### Useful CDK Commands

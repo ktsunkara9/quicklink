@@ -1221,3 +1221,257 @@ For this project, **Spring Boot + synchronous SQS** is the correct production so
 If async batching were critical, the project would need to be rewritten in Python/Node.js—but the 50-100ms latency makes that unnecessary.
 
 ---
+
+
+### API Gateway Proxy Mode Limitations
+
+#### What is Proxy Mode?
+
+API Gateway's `LambdaRestApi` with `proxy=True` forwards ALL requests to a single Lambda function, letting the application (Spring Boot) handle routing internally.
+
+**CDK Configuration:**
+```python
+api = apigw.LambdaRestApi(
+    self, "QuickLinkApi",
+    handler=lambda_function,
+    proxy=True  # ← All requests go to Lambda
+)
+```
+
+**Request flow:**
+```
+GET /api/v1/health     → Lambda → Spring Boot → HealthController
+POST /api/v1/shorten   → Lambda → Spring Boot → UrlController
+GET /abc123            → Lambda → Spring Boot → UrlController
+```
+
+---
+
+#### Limitations of Proxy Mode
+
+##### 1. No Per-Endpoint Throttling
+
+**Problem:** Cannot apply different rate limits to different endpoints.
+
+**What you can do:**
+```python
+# Global throttling only
+api = apigw.LambdaRestApi(
+    self, "QuickLinkApi",
+    handler=lambda_function,
+    proxy=True,
+    default_method_options=apigw.MethodOptions(
+        throttling=apigw.ThrottlingSettings(
+            rate_limit=50,      # 50 req/s for ALL endpoints
+            burst_limit=100     # 100 burst for ALL endpoints
+        )
+    )
+)
+```
+
+**What you cannot do:**
+```python
+# ❌ This doesn't work with proxy=True
+/api/v1/shorten  → 10 req/s   (write-heavy)
+/{shortCode}     → 1000 req/s (read-heavy)
+```
+
+**Why:** API Gateway doesn't see individual routes—it only sees `/{proxy+}` wildcard.
+
+**Workaround:** Implement application-level rate limiting in Spring Boot (not demonstrated in this project).
+
+---
+
+##### 2. No Per-Endpoint Authentication
+
+**Problem:** Cannot apply authentication to some endpoints while leaving others public.
+
+**What you need:**
+```
+POST /api/v1/shorten   → Requires authentication ✅
+GET /{shortCode}       → Public (no auth) ✅
+```
+
+**What proxy mode gives you:**
+```
+All endpoints → Same auth policy (all or nothing)
+```
+
+**Why this breaks the product:**
+- Short URLs MUST be public (shared in emails, social media, printed materials)
+- If you enable API Gateway authentication, redirect endpoint becomes inaccessible
+- Users would need API keys to click short links (defeats the purpose)
+
+**Attempted solutions:**
+
+**Option 1: API Gateway Cognito Authorizer**
+```python
+authorizer = apigw.CognitoUserPoolsAuthorizer(...)
+api = apigw.LambdaRestApi(
+    handler=lambda_function,
+    proxy=True,
+    default_method_options=apigw.MethodOptions(
+        authorizer=authorizer  # ← Applies to ALL endpoints
+    )
+)
+```
+- ❌ Breaks redirect endpoint (requires auth token)
+- ❌ Cannot exclude specific routes
+
+**Option 2: Application-Level Authentication**
+```java
+@Configuration
+public class SecurityConfig {
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) {
+        http.authorizeHttpRequests(auth -> auth
+            .requestMatchers("/api/v1/shorten").authenticated()
+            .requestMatchers("/{shortCode}").permitAll()
+        );
+    }
+}
+```
+- ✅ Works, but doesn't integrate with AWS Cognito
+- ❌ Requires custom JWT validation
+- ❌ No AWS-native user management
+
+**Decision:** Skip authentication for this project. Better suited for Password Manager project where all endpoints require auth.
+
+---
+
+##### 3. No Per-Endpoint Rate Limiting (Usage Plans)
+
+**Problem:** Cannot assign different quotas to different API keys.
+
+**What you want:**
+```
+Free tier:     100 requests/day
+Pro tier:      10,000 requests/day
+Enterprise:    Unlimited
+```
+
+**What proxy mode gives you:**
+```
+All API keys → Same quota (or no quotas)
+```
+
+**Why:** Usage plans require explicit API Gateway routes, not `/{proxy+}` wildcard.
+
+**Workaround:** Implement application-level quotas using DynamoDB (not demonstrated).
+
+---
+
+##### 4. Swagger UI Doesn't Work on Lambda
+
+**Problem:** Swagger UI requires serving static WebJar resources, which AWS Serverless Java Container doesn't support.
+
+**What works:**
+```
+Local:  http://localhost:8080/swagger-ui.html  ✅
+Lambda: https://api.example.com/swagger-ui.html  ❌
+```
+
+**Why:** 
+- Swagger UI is packaged as WebJar (JAR containing HTML/CSS/JS)
+- Spring Boot's ResourceHandler serves these files
+- AWS Serverless Java Container doesn't implement WebJar resource serving
+
+**Workaround:**
+```bash
+# Export OpenAPI spec
+curl https://YOUR_API_URL/v3/api-docs > openapi.json
+
+# Import into external tools
+- Swagger Editor: https://editor.swagger.io
+- Postman: Import → Upload openapi.json
+- Insomnia: Import → From File
+```
+
+**Trade-off:**
+- ❌ No interactive API docs on Lambda
+- ✅ OpenAPI spec export works perfectly
+- ✅ External tools provide better testing experience
+
+---
+
+##### 5. Cannot Mix Proxy and Explicit Routes
+
+**Problem:** Once you enable `proxy=True`, you cannot add explicit routes for fine-grained control.
+
+**What you cannot do:**
+```python
+api = apigw.LambdaRestApi(handler=lambda_function, proxy=True)
+
+# ❌ This doesn't work - proxy mode ignores explicit routes
+shorten_resource = api.root.add_resource("api").add_resource("v1").add_resource("shorten")
+shorten_resource.add_method("POST", throttling=...)
+```
+
+**Why:** `proxy=True` creates a single `/{proxy+}` route that catches everything.
+
+**Alternative:** Use `RestApi` with explicit routes (loses Spring Boot routing).
+
+---
+
+#### Proxy Mode vs Explicit Routes Comparison
+
+| Feature | Proxy Mode (LambdaRestApi) | Explicit Routes (RestApi) |
+|---------|---------------------------|---------------------------|
+| **Setup complexity** | ✅ Simple (1 line) | ❌ Complex (route per endpoint) |
+| **Spring Boot routing** | ✅ Works | ❌ Breaks (API Gateway routes first) |
+| **Per-endpoint throttling** | ❌ No | ✅ Yes |
+| **Per-endpoint auth** | ❌ No | ✅ Yes |
+| **Usage plans** | ❌ Limited | ✅ Full support |
+| **Maintenance** | ✅ Easy | ❌ Sync routes with code |
+| **Best for** | Monolithic apps | Microservices |
+
+---
+
+#### Why We Chose Proxy Mode
+
+**Rationale:**
+1. **Simplicity** - Single Lambda, single deployment
+2. **Spring Boot routing** - Leverage framework's routing capabilities
+3. **Rapid development** - No route synchronization needed
+4. **Portfolio focus** - Demonstrate Spring Boot expertise
+5. **Scale is acceptable** - Global throttling sufficient for demo
+
+**Trade-offs accepted:**
+- ❌ No per-endpoint throttling (acceptable for demo scale)
+- ❌ No AWS-native authentication (would break redirect endpoint anyway)
+- ❌ No usage plans (not needed for portfolio project)
+- ✅ Simpler infrastructure
+- ✅ Faster development
+- ✅ Better Spring Boot demonstration
+
+---
+
+#### When to Use Explicit Routes
+
+Consider `RestApi` with explicit routes when:
+- Need per-endpoint rate limiting (e.g., 10 req/s for writes, 1000 req/s for reads)
+- Need per-endpoint authentication (e.g., admin endpoints require auth, public endpoints don't)
+- Need usage plans with API keys (e.g., free/pro/enterprise tiers)
+- Building microservices (each endpoint is a separate Lambda)
+- Need fine-grained CloudWatch metrics per endpoint
+
+**Example use case:**
+```
+POST /api/v1/shorten   → 10 req/s, requires API key, admin Lambda
+GET /{shortCode}       → 1000 req/s, public, redirect Lambda
+GET /api/v1/stats      → 100 req/s, requires auth, analytics Lambda
+```
+
+---
+
+#### Key Takeaways
+
+1. **Proxy mode = simplicity** - Best for monolithic Spring Boot apps on Lambda
+2. **Authentication is incompatible** - Cannot protect some endpoints while keeping others public
+3. **Global throttling only** - Per-endpoint limits require explicit routes
+4. **Swagger UI doesn't work** - Use OpenAPI export + external tools
+5. **Trade-offs are documented** - Shows architectural thinking for interviews
+
+**Decision:** Proxy mode is the correct choice for this project's requirements and scale.
+
+---

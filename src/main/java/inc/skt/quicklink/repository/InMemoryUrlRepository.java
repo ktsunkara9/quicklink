@@ -49,4 +49,12 @@ public class InMemoryUrlRepository implements UrlRepository {
             existing.setExpiresAt(expiresAt);
         }
     }
+    
+    @Override
+    public void incrementClickCount(String shortCode) {
+        UrlMapping existing = storage.get(shortCode);
+        if (existing != null) {
+            existing.setClickCount(existing.getClickCount() + 1);
+        }
+    }
 }

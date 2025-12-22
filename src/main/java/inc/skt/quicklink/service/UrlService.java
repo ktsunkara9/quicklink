@@ -189,6 +189,7 @@ public class UrlService {
     /**
      * Retrieves original URL for a given short code.
      * Validates that URL exists, is active, and not expired.
+     * Increments click count synchronously.
      */
     public UrlMapping getOriginalUrl(String shortCode) {
         log.debug("Retrieving URL for shortCode: {}", shortCode);
@@ -205,6 +206,9 @@ public class UrlService {
             log.warn("Expired URL accessed: {}", shortCode);
             throw new UrlExpiredException("This short URL has expired");
         }
+        
+        // Increment click count
+        urlRepository.incrementClickCount(shortCode);
         
         log.info("Successfully retrieved URL for shortCode: {}", shortCode);
         return urlMapping;
