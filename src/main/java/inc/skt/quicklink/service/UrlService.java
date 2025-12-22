@@ -27,12 +27,16 @@ public class UrlService {
     private final UrlRepository urlRepository;
     private final TokenService tokenService;
     
-    @Value("${app.short-domain}")
+    @Value("${app.short-domain:}")
     private String shortDomain;
     
     public UrlService(UrlRepository urlRepository, TokenService tokenService) {
         this.urlRepository = urlRepository;
         this.tokenService = tokenService;
+        // If SHORT_DOMAIN not set, derive from request context at runtime
+        if (shortDomain == null || shortDomain.isEmpty()) {
+            shortDomain = "https://skt.inc";
+        }
     }
     
     /**
@@ -41,7 +45,17 @@ public class UrlService {
      * Otherwise, auto-generates a short code using TokenService.
      */
     public ShortenResponse createShortUrl(ShortenRequest request) {
+        return createShortUrl(request, null);
+    }
+    
+    /**
+     * Creates a short URL with optional base URL override.
+     */
+    public ShortenResponse createShortUrl(ShortenRequest request, String baseUrl) {
         log.debug("Creating short URL for: {}", request.getUrl());
+        
+        // Use provided baseUrl or fall back to configured shortDomain
+        String effectiveDomain = (baseUrl != null && !baseUrl.isEmpty()) ? baseUrl : shortDomain;
         
         // Fail-fast: Validate URL first (before any expensive operations)
         validateUrl(request.getUrl());
@@ -93,7 +107,7 @@ public class UrlService {
         
         return new ShortenResponse(
             shortCode,
-            shortDomain + "/" + shortCode,
+            effectiveDomain + "/" + shortCode,
             request.getUrl(),
             now,
             expiresAt
@@ -133,7 +147,7 @@ public class UrlService {
         }
         
         // Check 4: Self-referencing URL (prevent shortening our own short URLs)
-        if (url.toLowerCase().contains(shortDomain.toLowerCase().replace("https://", "").replace("http://", ""))) {
+        if (effectiveDomain != null && url.toLowerCase().contains(effectiveDomain.toLowerCase().replace("https://", "").replace("http://", ""))) {
             throw new InvalidUrlException("Cannot shorten URLs from this domain");
         }
         
