@@ -40,9 +40,11 @@ public class UrlController {
     @PostMapping("/api/v1/shorten")
     @Operation(summary = "Create short URL", description = "Converts a long URL into a short URL")
     public ResponseEntity<ShortenResponse> shortenUrl(@RequestBody ShortenRequest request, HttpServletRequest httpRequest) {
-        // Extract base URL including stage path (e.g., https://api.example.com/prod)
-        String requestUrl = httpRequest.getRequestURL().toString();
-        String baseUrl = requestUrl.substring(0, requestUrl.indexOf("/api/v1/shorten"));
+        // In Lambda, use RequestURI which includes stage path: /prod/api/v1/shorten
+        String requestUri = httpRequest.getRequestURI();
+        String scheme = httpRequest.getHeader("X-Forwarded-Proto") != null ? httpRequest.getHeader("X-Forwarded-Proto") : "https";
+        String host = httpRequest.getHeader("Host");
+        String baseUrl = scheme + "://" + host + requestUri.substring(0, requestUri.indexOf("/api/v1/shorten"));
         ShortenResponse response = urlService.createShortUrl(request, baseUrl);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
