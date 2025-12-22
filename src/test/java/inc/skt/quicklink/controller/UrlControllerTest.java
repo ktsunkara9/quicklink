@@ -3,6 +3,8 @@ package inc.skt.quicklink.controller;
 
 import inc.skt.quicklink.dto.ShortenRequest;
 import inc.skt.quicklink.dto.ShortenResponse;
+import inc.skt.quicklink.dto.UpdateUrlRequest;
+import inc.skt.quicklink.dto.UrlStatsResponse;
 import inc.skt.quicklink.exception.AliasAlreadyExistsException;
 import inc.skt.quicklink.exception.InvalidAliasException;
 import inc.skt.quicklink.exception.InvalidUrlException;
@@ -23,7 +25,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -284,5 +288,211 @@ class UrlControllerTest {
             .andExpect(status().isGone())
             .andExpect(jsonPath("$.message").value("This short URL has expired"))
             .andExpect(jsonPath("$.status").value(410));
+    }
+
+    // ========== Stats Endpoint Tests ==========
+
+    @Test
+    void should_return200OK_when_statsRequestedForValidShortCode() throws Exception {
+        // Given
+        UrlStatsResponse response = new UrlStatsResponse(
+            "abc1234",
+            "https://example.com/test",
+            42L,
+            1704067200L,
+            null,
+            true
+        );
+        when(urlService.getUrlStats("abc1234")).thenReturn(response);
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/stats/abc1234"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.shortCode").value("abc1234"))
+            .andExpect(jsonPath("$.longUrl").value("https://example.com/test"))
+            .andExpect(jsonPath("$.clickCount").value(42))
+            .andExpect(jsonPath("$.createdAt").value(1704067200L))
+            .andExpect(jsonPath("$.expiresAt").doesNotExist())
+            .andExpect(jsonPath("$.isActive").value(true));
+    }
+
+    @Test
+    void should_return200OK_when_statsRequestedWithExpiry() throws Exception {
+        // Given
+        UrlStatsResponse response = new UrlStatsResponse(
+            "abc1234",
+            "https://example.com/test",
+            10L,
+            1704067200L,
+            1706659200L,
+            true
+        );
+        when(urlService.getUrlStats("abc1234")).thenReturn(response);
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/stats/abc1234"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.expiresAt").value(1706659200L));
+    }
+
+    @Test
+    void should_return200OK_when_statsRequestedForInactiveUrl() throws Exception {
+        // Given
+        UrlStatsResponse response = new UrlStatsResponse(
+            "abc1234",
+            "https://example.com/test",
+            5L,
+            1704067200L,
+            null,
+            false
+        );
+        when(urlService.getUrlStats("abc1234")).thenReturn(response);
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/stats/abc1234"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.isActive").value(false));
+    }
+
+    @Test
+    void should_return404NotFound_when_statsRequestedForNonExistentShortCode() throws Exception {
+        // Given
+        when(urlService.getUrlStats("invalid"))
+            .thenThrow(new UrlNotFoundException("Short URL not found: invalid"));
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/stats/invalid"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Short URL not found: invalid"))
+            .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    void should_returnJsonResponse_when_statsRequested() throws Exception {
+        // Given
+        UrlStatsResponse response = new UrlStatsResponse(
+            "abc1234",
+            "https://example.com/test",
+            0L,
+            1704067200L,
+            null,
+            true
+        );
+        when(urlService.getUrlStats("abc1234")).thenReturn(response);
+
+        // When & Then
+        mockMvc.perform(get("/api/v1/stats/abc1234"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    // ========== PATCH Endpoint Tests ==========
+
+    @Test
+    void should_return200OK_when_expiryUpdatedSuccessfully() throws Exception {
+        // Given
+        UpdateUrlRequest request = new UpdateUrlRequest(30);
+        ShortenResponse response = new ShortenResponse(
+            "abc1234",
+            "https://skt.inc/abc1234",
+            "https://example.com/test",
+            1704067200L,
+            1706659200L
+        );
+        when(urlService.updateUrl("abc1234", request)).thenReturn(response);
+
+        // When & Then
+        mockMvc.perform(patch("/api/v1/urls/abc1234")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.shortCode").value("abc1234"))
+            .andExpect(jsonPath("$.expiresAt").value(1706659200L));
+    }
+
+    @Test
+    void should_return200OK_when_expiryRemovedWithNull() throws Exception {
+        // Given
+        UpdateUrlRequest request = new UpdateUrlRequest(null);
+        ShortenResponse response = new ShortenResponse(
+            "abc1234",
+            "https://skt.inc/abc1234",
+            "https://example.com/test",
+            1704067200L,
+            null
+        );
+        when(urlService.updateUrl("abc1234", request)).thenReturn(response);
+
+        // When & Then
+        mockMvc.perform(patch("/api/v1/urls/abc1234")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.expiresAt").doesNotExist());
+    }
+
+    @Test
+    void should_return404NotFound_when_patchCalledOnNonExistentUrl() throws Exception {
+        // Given
+        UpdateUrlRequest request = new UpdateUrlRequest(30);
+        when(urlService.updateUrl("nonexistent", request))
+            .thenThrow(new UrlNotFoundException("Short URL not found: nonexistent"));
+
+        // When & Then
+        mockMvc.perform(patch("/api/v1/urls/nonexistent")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Short URL not found: nonexistent"));
+    }
+
+    @Test
+    void should_return400BadRequest_when_invalidExpiryProvided() throws Exception {
+        // Given
+        UpdateUrlRequest request = new UpdateUrlRequest(400);
+        when(urlService.updateUrl("abc1234", request))
+            .thenThrow(new InvalidUrlException("Expiry must be between 1 and 365 days"));
+
+        // When & Then
+        mockMvc.perform(patch("/api/v1/urls/abc1234")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("Expiry must be between 1 and 365 days"));
+    }
+
+    // ========== DELETE Endpoint Tests ==========
+
+    @Test
+    void should_return204NoContent_when_urlDeletedSuccessfully() throws Exception {
+        // Given
+        doNothing().when(urlService).deleteUrl("abc1234");
+
+        // When & Then
+        mockMvc.perform(delete("/api/v1/urls/abc1234"))
+            .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void should_return404NotFound_when_deleteCalledOnNonExistentUrl() throws Exception {
+        // Given
+        when(urlService.deleteUrl("nonexistent"))
+            .thenThrow(new UrlNotFoundException("Short URL not found: nonexistent"));
+
+        // When & Then
+        mockMvc.perform(delete("/api/v1/urls/nonexistent"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Short URL not found: nonexistent"));
+    }
+
+    @Test
+    void should_notReturnBody_when_deleteSuccessful() throws Exception {
+        // Given
+        doNothing().when(urlService).deleteUrl("abc1234");
+
+        // When & Then
+        mockMvc.perform(delete("/api/v1/urls/abc1234"))
+            .andExpect(status().isNoContent())
+            .andExpect(content().string(""));
     }
 }

@@ -8,69 +8,46 @@ This repository focuses on **HLD → LLD → trade-offs**, making it suitable fo
 ## 🚧 Implementation Status
 
 ### ✅ Completed
-- [x] Project setup (Maven, Spring Boot 3.2, Java 17)
-- [x] Health endpoint with dependency checks (GET /api/v1/health)
-- [x] DTOs (ShortenRequest, ShortenResponse, HealthResponse, ErrorResponse)
-- [x] Domain models (UrlMapping, TokenMetadata)
-- [x] Base62 encoder/decoder utility with unit tests
-- [x] Repository pattern (UrlRepository interface + implementations)
-- [x] DynamoDB integration (Enhanced Client + standard client)
-- [x] DynamoDB configuration (DynamoDbConfig)
-- [x] Spring Profiles (local, test, prod) with environment-specific beans
-- [x] UrlController (POST /api/v1/shorten endpoint)
-- [x] UrlService (business logic layer with fail-fast validations)
-- [x] TokenService (ID generation with range allocation - RANGE_SIZE=100)
-- [x] TokenRepository interface (atomic increment)
-- [x] DynamoDbTokenRepository (implementation with atomic ADD)
-- [x] TokenService integrated with DynamoDB (range allocation complete)
-- [x] UrlService integrated with TokenService (distributed ID generation)
-- [x] Custom exception classes (InvalidUrlException, InvalidAliasException, AliasAlreadyExistsException, UrlNotFoundException, UrlExpiredException)
-- [x] Global exception handler (@RestControllerAdvice with proper HTTP status mapping)
-- [x] Input validation (fail-fast validations: URL format, length, self-referencing, localhost/private IPs, custom alias format, reserved keywords, uniqueness check)
-- [x] Custom expiry feature (1-365 days, optional)
+
+**Core Application**
+- [x] Spring Boot 3.2 + Java 17 project setup with Maven
+- [x] Domain models (UrlMapping, TokenMetadata) and DTOs
+- [x] Repository pattern with DynamoDB and in-memory implementations
+- [x] Base62 encoder/decoder with unit tests
+- [x] Spring Profiles (local, test, prod) for environment-specific beans
+
+**Business Logic**
+- [x] TokenService with range-based ID allocation (100 IDs at a time)
+- [x] UrlService with fail-fast validations (URL format, length, custom alias, expiry)
+- [x] Custom exception handling (@RestControllerAdvice with proper HTTP status mapping)
+- [x] Soft delete implementation (isActive flag)
+
+**API Endpoints**
+- [x] POST /api/v1/shorten - Create short URL with optional custom alias and expiry
+- [x] GET /{shortCode} - 301 redirect with expiry and active status checks
+- [x] PATCH /api/v1/urls/{shortCode} - Update URL expiry
+- [x] DELETE /api/v1/urls/{shortCode} - Soft delete URL
+- [x] GET /api/v1/stats/{shortCode} - Retrieve URL statistics
+- [x] GET /api/v1/health - Health check with dependency status
+- [x] Hybrid API versioning (management endpoints versioned, redirect clean)
+
+**Analytics & Monitoring**
+- [x] Click count tracking with atomic DynamoDB ADD operation
+- [x] SQS integration for analytics events (synchronous for Lambda)
 - [x] Logging (SLF4J) in service layer and exception handler
-- [x] GET /{shortCode} redirect endpoint (301 redirect with expiry and active status checks)
-- [x] Hybrid API versioning (management endpoints versioned, redirect endpoint clean)
-- [x] Unit tests - UrlService (19 tests)
-- [x] Unit tests - TokenService (10 tests)
-- [x] Unit tests - UrlController (16 tests - includes redirect endpoint tests)
-- [x] Unit tests - HealthController (10 tests)
-- [x] Unit tests - Base62Encoder (comprehensive coverage)
-- [x] Swagger/OpenAPI documentation
-- [x] Spring Boot DevTools for hot reload
-- [x] AWS CDK infrastructure (Python)
-- [x] CDK stack with DynamoDB tables (quicklink-urls, quicklink-tokens)
-- [x] CDK Lambda function definition (Spring Boot, 512MB, 10s timeout)
-- [x] CDK API Gateway REST API (with throttling)
-- [x] IAM permissions (Lambda to DynamoDB)
+
+**AWS Infrastructure**
+- [x] AWS CDK infrastructure (Python) with DynamoDB tables
+- [x] Lambda function (Spring Boot, 512MB, 10s timeout)
+- [x] API Gateway REST API with request throttling (50 req/s, 100 burst)
 - [x] AWS Serverless Java Container integration (StreamLambdaHandler)
-- [x] Lambda-specific Spring profile (application-prod.yml)
-- [x] CDK synthesis successful (CloudFormation template generated)
-- [x] Maven Shade plugin configuration (flat JAR for Lambda)
-- [x] JAR build successful (quicklink-1.0.0-aws.jar)
-- [x] Deployed to AWS (cdk deploy)
-- [x] Token counter initialized in DynamoDB
-- [x] End-to-end testing on AWS (POST /api/v1/shorten + GET /{shortCode})
-- [x] Verified 301 redirects working correctly
-- [x] Analytics service (synchronous for Lambda compatibility)
-- [x] SQS integration for analytics
-- [x] AnalyticsEvent DTO
-- [x] AnalyticsService with fire-and-forget pattern
-- [x] SQS queue in CDK infrastructure
-- [x] End-to-end analytics testing (verified messages in SQS)
-- [x] Demo UI (index.html with form for creating short URLs)
-- [x] HomeController to serve static HTML in Lambda
-- [x] Dynamic base URL extraction (includes /prod stage)
-- [x] UpdateUrlRequest DTO for PATCH endpoint
-- [x] PATCH /api/v1/urls/{shortCode} endpoint (update expiry)
-- [x] DELETE /api/v1/urls/{shortCode} endpoint (soft delete)
-- [x] Soft delete implementation (sets isActive=false)
-- [x] Repository methods for updateExpiry and softDelete
-- [x] End-to-end testing of PATCH and DELETE on AWS
-- [x] Request throttling (API Gateway - 50 req/s rate, 100 burst limit)
-- [x] Click count tracking (atomic DynamoDB ADD operation)
-- [x] UrlRepository.incrementClickCount() method
-- [x] Click count increment on every redirect
+- [x] Maven Shade plugin for Lambda-compatible JAR
+- [x] Deployed to AWS and end-to-end tested
+
+**Testing & Documentation**
+- [x] Unit tests (UrlService: 19, TokenService: 10, Controllers: 26, Base62Encoder)
+- [x] Swagger/OpenAPI documentation
+- [x] Demo UI (index.html) with HomeController
 
 ### 🔴 Pending
 - [ ] API Authentication (AWS Cognito or API Keys)
@@ -297,7 +274,7 @@ DELETE /api/v1/urls/{shortCode}
 Response: 204 No Content
 ```
 
-### 6. Get URL Statistics (Future)
+### 6. Get URL Statistics
 ```http
 GET /api/v1/stats/{shortCode}
 
@@ -307,6 +284,7 @@ Response: 200 OK
   "longUrl": "https://example.com/very/long/url",
   "clickCount": 42,
   "createdAt": 1704067200,
+  "expiresAt": null,
   "isActive": true
 }
 ```
