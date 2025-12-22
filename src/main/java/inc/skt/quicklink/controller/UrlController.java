@@ -42,7 +42,23 @@ public class UrlController {
     @Operation(summary = "Create short URL", description = "Converts a long URL into a short URL")
     public ResponseEntity<ShortenResponse> shortenUrl(@RequestBody ShortenRequest request) {
         ShortenResponse response = urlService.createShortUrl(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+                .header("Access-Control-Allow-Headers", "*")
+                .body(response);
+    }
+    
+    /**
+     * Handle CORS preflight requests.
+     */
+    @RequestMapping(method = RequestMethod.OPTIONS, value = "/api/v1/shorten")
+    public ResponseEntity<Void> handleOptions() {
+        return ResponseEntity.ok()
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+                .header("Access-Control-Allow-Headers", "*")
+                .build();
     }
     
     /**
