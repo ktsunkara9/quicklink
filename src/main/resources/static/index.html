@@ -283,8 +283,8 @@
     </div>
 
     <script>
-        // Replace with your actual API Gateway URL
-        const API_URL = 'YOUR_API_GATEWAY_URL_HERE';
+        // Use relative URL - works for both local and AWS deployment
+        const API_URL = window.location.origin;
 
         const form = document.getElementById('shortenForm');
         const submitBtn = document.getElementById('submitBtn');
