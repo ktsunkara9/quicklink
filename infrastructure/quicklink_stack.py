@@ -79,6 +79,7 @@ class QuickLinkStack(Stack):
             rest_api_name="quicklink-api",
             handler=self.quicklink_function,
             proxy=True,
+            binary_media_types=["*/*"],
             deploy_options=apigateway.StageOptions(
                 stage_name="prod",
                 throttling_rate_limit=100,

@@ -413,8 +413,11 @@ mvn spring-boot:run
 # Test health endpoint
 curl http://localhost:8080/api/v1/health
 
-# View Swagger UI
+# View Swagger UI (local)
 http://localhost:8080/swagger-ui.html
+
+# View OpenAPI JSON spec
+http://localhost:8080/v3/api-docs
 ```
 
 ### Deploy to AWS
@@ -562,6 +565,24 @@ aws cloudformation describe-stacks \
 - Expected: `301 Moved Permanently` with Location header
 
 **Note:** First request will take 5-10 seconds (Spring Boot cold start). Subsequent requests will be fast (~100-200ms).
+
+##### Option C: Using OpenAPI Specification
+
+**Get OpenAPI JSON spec:**
+```bash
+curl https://YOUR_API_URL/v3/api-docs > openapi.json
+```
+
+**Then import into:**
+- **Swagger Editor**: https://editor.swagger.io (paste JSON)
+- **Postman**: Import → Upload openapi.json
+- **Insomnia**: Import → From File
+
+**Note:** 
+- Swagger UI doesn't work reliably on Lambda due to static resource serving issues
+- OpenAPI spec export works perfectly and can be used with external tools
+- For interactive API testing on AWS, use Postman or cURL
+- Swagger UI works great for local development (http://localhost:8080/swagger-ui.html)
 
 #### Useful CDK Commands
 ```bash
