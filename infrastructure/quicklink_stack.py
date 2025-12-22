@@ -85,6 +85,9 @@ class QuickLinkStack(Stack):
                 throttling_burst_limit=200
             )
         )
+        
+        # Set SHORT_DOMAIN after API is created
+        self.quicklink_function.add_environment("SHORT_DOMAIN", self.api.url.rstrip('/'))
 
         # CloudFormation Outputs
         CfnOutput(
