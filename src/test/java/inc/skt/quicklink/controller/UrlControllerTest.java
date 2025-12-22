@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -476,8 +477,8 @@ class UrlControllerTest {
     @Test
     void should_return404NotFound_when_deleteCalledOnNonExistentUrl() throws Exception {
         // Given
-        when(urlService.deleteUrl("nonexistent"))
-            .thenThrow(new UrlNotFoundException("Short URL not found: nonexistent"));
+        doThrow(new UrlNotFoundException("Short URL not found: nonexistent"))
+            .when(urlService).deleteUrl("nonexistent");
 
         // When & Then
         mockMvc.perform(delete("/api/v1/urls/nonexistent"))
