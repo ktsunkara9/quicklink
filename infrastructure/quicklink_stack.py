@@ -73,7 +73,7 @@ class QuickLinkStack(Stack):
         # Grant Lambda permission to send messages to SQS
         self.analytics_queue.grant_send_messages(self.quicklink_function)
 
-        # API Gateway: REST API with CORS enabled
+        # API Gateway: REST API
         self.api = apigateway.LambdaRestApi(
             self, "QuickLinkApi",
             rest_api_name="quicklink-api",
@@ -83,11 +83,6 @@ class QuickLinkStack(Stack):
                 stage_name="prod",
                 throttling_rate_limit=100,
                 throttling_burst_limit=200
-            ),
-            default_cors_preflight_options=apigateway.CorsOptions(
-                allow_origins=apigateway.Cors.ALL_ORIGINS,
-                allow_methods=apigateway.Cors.ALL_METHODS,
-                allow_headers=["Content-Type", "Authorization"]
             )
         )
 
