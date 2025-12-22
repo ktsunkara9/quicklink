@@ -40,8 +40,9 @@ public class UrlController {
     @PostMapping("/api/v1/shorten")
     @Operation(summary = "Create short URL", description = "Converts a long URL into a short URL")
     public ResponseEntity<ShortenResponse> shortenUrl(@RequestBody ShortenRequest request, HttpServletRequest httpRequest) {
-        // Extract base URL from request (scheme + host + context path)
-        String baseUrl = httpRequest.getScheme() + "://" + httpRequest.getHeader("Host") + httpRequest.getContextPath();
+        // Extract base URL including stage path (e.g., https://api.example.com/prod)
+        String requestUrl = httpRequest.getRequestURL().toString();
+        String baseUrl = requestUrl.substring(0, requestUrl.indexOf("/api/v1/shorten"));
         ShortenResponse response = urlService.createShortUrl(request, baseUrl);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
