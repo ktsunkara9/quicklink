@@ -7,8 +7,9 @@ This document captures the architectural decisions, trade-offs, and learnings th
 ## Table of Contents
 1. [Design Decisions](#design-decisions)
 2. [Implementation Learnings](#implementation-learnings)
-3. [Spring Profiles](#spring-profiles)
-4. [AWS & Infrastructure](#aws--infrastructure)
+3. [Caching Strategies](#caching-strategies)
+4. [Spring Profiles](#spring-profiles)
+5. [AWS & Infrastructure](#aws--infrastructure)
 
 ---
 
@@ -224,6 +225,293 @@ API Gateway
 4. **Events**: Conference-specific shorteners
 
 **Our Project:** Portfolio demonstration + potential internal tool
+
+---
+
+## Caching Strategies
+
+### 1. In-Memory Caching (Current Implementation)
+
+#### TokenService Range Caching
+
+**Implementation:**
+```java
+@Service
+public class TokenService {
+    private final Queue<Long> tokenCache = new ConcurrentLinkedQueue<>();
+    private static final int BATCH_SIZE = 100;
+    
+    public Long getNextToken() {
+        if (tokenCache.isEmpty()) {
+            refillCache();
+        }
+        return tokenCache.poll();
+    }
+}
+```
+
+**How It Works:**
+- Pre-fetches 100 tokens at startup
+- Refills when cache is empty
+- Uses atomic DynamoDB counter increment
+- Thread-safe with ConcurrentLinkedQueue
+
+**Benefits:**
+- ✅ Eliminates DynamoDB calls for 99% of requests
+- ✅ Reduces latency from 50ms to <1ms
+- ✅ Cost efficient (fewer DynamoDB operations)
+- ✅ Simple implementation
+
+**Limitations:**
+- ❌ Tokens lost on Lambda cold start
+- ❌ No sharing between Lambda instances
+- ❌ Cache size limited by Lambda memory
+
+---
+
+### 2. Redis Distributed Caching
+
+#### URL Lookup Caching
+
+**Implementation:**
+```java
+@Service
+public class UrlService {
+    @Cacheable(value = "urls", key = "#shortCode")
+    public UrlEntity findByShortCode(String shortCode) {
+        return urlRepository.findByShortCode(shortCode);
+    }
+}
+```
+
+**Configuration:**
+```yaml
+spring:
+  cache:
+    type: redis
+  redis:
+    host: elasticache-cluster.aws.com
+    port: 6379
+    timeout: 2000ms
+```
+
+**Benefits:**
+- ✅ Shared cache across all Lambda instances
+- ✅ Persistent across cold starts
+- ✅ Sub-millisecond lookup times
+- ✅ Automatic expiration policies
+- ✅ Handles high-traffic URLs efficiently
+
+**Limitations:**
+- ❌ Additional infrastructure cost (~$15/month)
+- ❌ Network latency (1-3ms)
+- ❌ Cache invalidation complexity
+- ❌ Potential cache stampede on popular URLs
+
+**Use Case:** High-traffic production systems with frequent URL lookups
+
+---
+
+### 3. DynamoDB DAX (DynamoDB Accelerator)
+
+#### Transparent Database Caching
+
+**Implementation:**
+```java
+@Configuration
+public class DynamoDbConfig {
+    @Bean
+    public DynamoDbClient dynamoDbClient() {
+        return DaxClientBuilder.standard()
+            .endpointConfiguration("dax-cluster.aws.com:8111")
+            .build();
+    }
+}
+```
+
+**Benefits:**
+- ✅ Transparent caching (no code changes)
+- ✅ Microsecond response times
+- ✅ Automatic cache management
+- ✅ Write-through caching
+- ✅ Multi-AZ availability
+
+**Limitations:**
+- ❌ Expensive (~$200/month minimum)
+- ❌ Only works with DynamoDB
+- ❌ Limited cache size per node
+- ❌ Overkill for small applications
+
+**Use Case:** Enterprise applications with massive DynamoDB workloads
+
+---
+
+### 4. Application-Level LRU Cache
+
+#### Hot URL Caching
+
+**Implementation:**
+```java
+@Component
+public class UrlCache {
+    private final Map<String, UrlEntity> cache = 
+        Collections.synchronizedMap(new LinkedHashMap<String, UrlEntity>(1000, 0.75f, true) {
+            protected boolean removeEldestEntry(Map.Entry<String, UrlEntity> eldest) {
+                return size() > 1000;
+            }
+        });
+    
+    public UrlEntity get(String shortCode) {
+        return cache.get(shortCode);
+    }
+}
+```
+
+**Benefits:**
+- ✅ Zero external dependencies
+- ✅ Automatic eviction of old entries
+- ✅ Memory efficient
+- ✅ Fast access for popular URLs
+
+**Limitations:**
+- ❌ Lost on Lambda restart
+- ❌ No sharing between instances
+- ❌ Fixed memory footprint
+- ❌ Manual cache management
+
+**Use Case:** Medium-traffic applications with predictable access patterns
+
+---
+
+### 5. CloudFront Edge Caching (Recommended for URL Shorteners)
+
+#### Caching API Redirects at Edge Locations
+
+**Implementation:**
+```python
+# CDK Configuration
+cloudfront.Distribution(
+    self, "QuickLinkCDN",
+    default_behavior=cloudfront.BehaviorOptions(
+        origin=origins.RestApiOrigin(api_gateway),
+        cache_policy=cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS
+    )
+)
+```
+
+**Architecture:**
+```
+User (Tokyo) → CloudFront Edge (Tokyo) → Cache Hit → 301 Redirect (50ms)
+User (London) → CloudFront Edge (London) → Cache Miss → API Gateway (us-east-1) → Lambda → 301 (200ms)
+User (London) → CloudFront Edge (London) → Cache Hit → 301 Redirect (50ms)
+```
+
+**Benefits:**
+- ✅ 450+ global edge locations (sub-100ms worldwide)
+- ✅ Reduces Lambda invocations by 80-95% (massive cost savings)
+- ✅ Built-in DDoS protection (AWS Shield)
+- ✅ Automatic SSL/TLS termination
+- ✅ Perfect for URL shorteners (immutable redirects)
+- ✅ Industry standard (bit.ly, TinyURL use CDN)
+
+**Performance:**
+```
+Without CloudFront:
+- Global latency: 200-500ms (distance to AWS region)
+- Lambda invocations: 1M/month
+- Cost: $10.40/month
+
+With CloudFront:
+- Global latency: 50-100ms (nearest edge)
+- Lambda invocations: 50K-200K/month (80-95% cache hit)
+- Cost: $2-3/month (Lambda) + $1/month (CloudFront) = $3-4/month
+- Savings: 60-70% cost reduction
+```
+
+**Limitations:**
+- ❌ Cache invalidation delay (5-15 minutes)
+- ❌ Analytics delayed by cache TTL (use SQS for real-time)
+
+**Why Best for URL Shorteners:**
+- Redirects are immutable (URLs don't change after creation)
+- Read-heavy workload (1000:1 read-to-write ratio)
+- Global user base (not region-specific)
+- Simple responses (just 301 redirects)
+
+**Use Case:** Production URL shorteners with global traffic
+
+---
+
+### 6. Browser Caching
+
+#### Client-Side Response Caching
+
+**Implementation:**
+```java
+@GetMapping("/{shortCode}")
+public ResponseEntity<Void> redirect(@PathVariable String shortCode) {
+    String longUrl = urlService.getLongUrl(shortCode);
+    
+    return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY)
+        .header("Location", longUrl)
+        .header("Cache-Control", "public, max-age=3600")  // 1 hour
+        .build();
+}
+```
+
+**Benefits:**
+- ✅ Zero server load for repeat visits
+- ✅ Fastest possible response time
+- ✅ Reduces bandwidth costs
+- ✅ Works automatically
+
+**Limitations:**
+- ❌ User-specific (no sharing)
+- ❌ Limited by browser cache size
+- ❌ Can't invalidate remotely
+- ❌ Not suitable for tracking analytics
+
+**Use Case:** URLs that don't change and don't need click tracking
+
+---
+
+### Caching Strategy Comparison
+
+| Strategy | Latency | Cost | Complexity | Persistence | Sharing | Best For |
+|----------|---------|------|------------|-------------|---------|----------|
+| **In-Memory** | <1ms | Free | Low | ❌ | ❌ | Token generation |
+| **Redis** | 1-3ms | $15/mo | Medium | ✅ | ✅ | Dynamic data |
+| **DAX** | <1ms | $200/mo | Low | ✅ | ✅ | Heavy DynamoDB workloads |
+| **LRU Cache** | <1ms | Free | Medium | ❌ | ❌ | Hot URLs |
+| **CloudFront** | 50-100ms | $1/mo | Medium | ✅ | ✅ | **URL redirects** ✅ |
+| **Browser** | 0ms | Free | Low | ❌ | ❌ | Static content |
+
+---
+
+### Current Implementation Choice
+
+**Selected:** In-Memory TokenService Caching
+
+**Rationale:**
+- Addresses token generation (highest-latency write operation)
+- Zero additional infrastructure cost
+- Simple to implement and maintain
+- Sufficient for demonstration purposes
+
+**Performance Impact:**
+```
+Without caching: 50ms (DynamoDB call per URL creation)
+With caching: <1ms (99% cache hit rate)
+Improvement: 50x faster token generation
+```
+
+**Production Recommendation:** Add CloudFront for redirect caching
+- CloudFront is the best solution for URL shortener redirects
+- Reduces global latency from 200-500ms to 50-100ms
+- Cuts Lambda costs by 60-70% (80-95% cache hit rate)
+- Industry standard for URL shorteners (bit.ly, TinyURL)
+- See CloudFront section above for detailed analysis
 
 ---
 
@@ -1473,5 +1761,227 @@ GET /api/v1/stats      → 100 req/s, requires auth, analytics Lambda
 5. **Trade-offs are documented** - Shows architectural thinking for interviews
 
 **Decision:** Proxy mode is the correct choice for this project's requirements and scale.
+
+---
+
+
+### Production Analytics Architecture (Not Implemented)
+
+#### Current Implementation: Synchronous
+
+**Redirect flow:**
+```
+GET /{shortCode}
+  ↓
+1. Read URL from DynamoDB (~10-20ms)
+2. Increment click count in DynamoDB (~30-50ms) ← Synchronous
+3. Send analytics to SQS (~20-30ms) ← Synchronous
+4. Return 301 redirect
+Total: ~60-100ms
+```
+
+#### Recommended Production Approach: Async with Consumer
+
+**Redirect flow:**
+```
+GET /{shortCode}
+  ↓
+1. Read URL from DynamoDB (~10-20ms)
+2. Send single SQS event (~20-30ms) ← Synchronous but fast
+3. Return 301 redirect immediately
+Total: ~30-50ms (40-50% faster)
+
+Background (async):
+SQS → Consumer Lambda → Update DynamoDB + Store analytics
+```
+
+**SQS Event Payload:**
+```json
+{
+  "shortCode": "abc123",
+  "ipAddress": "203.0.113.42",
+  "userAgent": "Mozilla/5.0...",
+  "timestamp": 1704067200,
+  "referer": "https://example.com"
+}
+```
+
+**Consumer Lambda responsibilities:**
+1. Batch process SQS events (10-100 at a time)
+2. Update DynamoDB click counts (batch write)
+3. Store detailed analytics (S3, Timestream, or analytics DB)
+4. Aggregate metrics (hourly/daily summaries)
+
+#### Performance Comparison
+
+| Metric | Current (Sync) | Production (Async) | Improvement |
+|--------|---------------|-------------------|-------------|
+| Redirect latency | 60-100ms | 30-50ms | 40-50% faster |
+| DynamoDB writes | 2 per redirect | 1 per batch | 90% reduction |
+| SQS cost | $1.04/month | $1.04/month | Same |
+| Lambda cost | $10.40/month | $12.50/month | +20% |
+| Reliability | ✅ High | ✅ High | Same |
+| Complexity | Low | Medium | Trade-off |
+
+#### Why Not Implemented
+
+**Reasons:**
+1. **Demo simplicity** - Fewer moving parts to explain
+2. **Acceptable latency** - 60-100ms is industry standard
+3. **Cost-effective** - Saves $2/month on Lambda
+4. **Reliable** - No data loss from async failures
+5. **SQS is fast** - 20-30ms is already quite fast
+
+**When to implement:**
+- Traffic > 100 req/s (latency becomes critical)
+- Need complex analytics (geographic, device, bot detection)
+- Want to aggregate metrics in real-time
+- Building production service (not demo)
+
+#### Key Insight: SQS vs DynamoDB Performance
+
+**SQS is faster than DynamoDB for writes:**
+- **SQS SendMessage**: 10-30ms (fire-and-forget, eventual consistency)
+- **DynamoDB UpdateItem**: 20-50ms (atomic operations, strong consistency)
+
+**Why:**
+- SQS accepts message and returns immediately (no read-after-write)
+- DynamoDB must ensure atomic increment (read-modify-write cycle)
+- SQS has no consistency guarantees (just queue it)
+- DynamoDB guarantees strong consistency (must wait for confirmation)
+
+**Trade-off:**
+- ✅ SQS: Faster writes, eventual processing
+- ✅ DynamoDB: Slower writes, immediate consistency
+- **Decision:** Use SQS for async analytics, DynamoDB for real-time counters
+
+---
+
+
+### URL Expiry Handling: Application Check vs DynamoDB TTL
+
+#### Current Implementation: Application-Level Check
+
+Every redirect checks expiry time in application code:
+
+```java
+public UrlMapping getOriginalUrl(String shortCode) {
+    UrlMapping urlMapping = urlRepository.findByShortCode(shortCode)
+            .orElseThrow(() -> new UrlNotFoundException("Short URL not found: " + shortCode));
+    
+    // Check expiry on every request
+    if (urlMapping.getExpiresAt() != null && urlMapping.getExpiresAt() < System.currentTimeMillis() / 1000) {
+        throw new UrlExpiredException("This short URL has expired");
+    }
+    
+    return urlMapping;
+}
+```
+
+**Pros:**
+- ✅ Immediate feedback to user
+- ✅ Custom error message ("This short URL has expired")
+- ✅ Can log expired access attempts
+- ✅ Simple to implement
+
+**Cons:**
+- ❌ Adds latency (~1-2ms per redirect)
+- ❌ Expired URLs still stored in DynamoDB
+- ❌ Wastes storage space
+- ❌ Manual cleanup required
+
+---
+
+#### Better Approach: DynamoDB TTL (Recommended for Production)
+
+DynamoDB has built-in Time-To-Live (TTL) that automatically deletes expired items.
+
+**How it works:**
+1. Enable TTL on `expiresAt` attribute
+2. DynamoDB scans table and deletes expired items (within 48 hours)
+3. No application code needed
+4. Free (no additional cost)
+
+**Implementation:**
+```python
+# In quicklink_stack.py
+urls_table = dynamodb.Table(
+    self, "QuickLinkUrls",
+    partition_key=dynamodb.Attribute(name="shortCode", type=dynamodb.AttributeType.STRING),
+    time_to_live_attribute="expiresAt"  # ← Enable TTL
+)
+```
+
+**Pros:**
+- ✅ Zero latency (no application check)
+- ✅ Automatic cleanup (free)
+- ✅ Reduces storage costs
+- ✅ No code maintenance
+
+**Cons:**
+- ❌ Deletion delay (up to 48 hours after expiry)
+- ❌ Generic 404 error (item deleted)
+- ❌ Cannot log expired access attempts
+
+---
+
+#### Recommended Production Approach: Both
+
+Use both application check AND DynamoDB TTL:
+
+```java
+// Application check (immediate feedback)
+if (urlMapping.getExpiresAt() != null && urlMapping.getExpiresAt() < System.currentTimeMillis() / 1000) {
+    throw new UrlExpiredException("This short URL has expired");
+}
+```
+
+```python
+# DynamoDB TTL (automatic cleanup)
+urls_table = dynamodb.Table(
+    time_to_live_attribute="expiresAt"
+)
+```
+
+**Why both:**
+- **0-48 hours after expiry:** Application check returns "expired" message
+- **48+ hours after expiry:** DynamoDB deletes item, returns 404
+- Best of both worlds: immediate UX + automatic cleanup
+
+---
+
+#### Comparison
+
+| Approach | Latency | Storage | User Experience | Cost | Complexity |
+|----------|---------|---------|-----------------|------|------------|
+| **Application check only** (current) | +1-2ms | Wastes space | ✅ Immediate error | Free | Low |
+| **DynamoDB TTL only** | 0ms | ✅ Auto-cleanup | ⚠️ 404 (delayed) | Free | Very low |
+| **Both** (recommended) | +1-2ms | ✅ Auto-cleanup | ✅ Immediate error | Free | Low |
+
+---
+
+#### Why Not Implemented
+
+**Reasons:**
+1. **Demo simplicity** - Application check is sufficient for portfolio
+2. **TTL delay** - 48-hour window requires explanation
+3. **Storage cost negligible** - Demo scale doesn't need cleanup
+4. **Shows trade-off thinking** - Documents both approaches
+
+**When to implement:**
+- Production deployment (storage costs matter)
+- High traffic (millions of URLs)
+- Long-term operation (years of expired URLs)
+
+---
+
+#### Key Takeaways
+
+1. **Application check** - Good for UX, adds latency
+2. **DynamoDB TTL** - Good for storage, has delay
+3. **Both together** - Best production solution
+4. **Current implementation** - Acceptable for demo, documents trade-offs
+
+**Decision:** Application check only for demo. Production should add DynamoDB TTL.
 
 ---

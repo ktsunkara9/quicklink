@@ -53,6 +53,19 @@ This project demonstrates:
 - [x] SQS integration for analytics events (synchronous for Lambda)
 - [x] Logging (SLF4J) in service layer and exception handler
 
+**Note on Analytics Implementation:**  
+For demo purposes, analytics are recorded synchronously during redirect (~50-80ms latency). In production, the recommended approach is:
+1. Redirect immediately (~5-10ms)
+2. Publish single SQS event with all data (shortCode, IP, user-agent, timestamp)
+3. Separate Lambda consumer processes events asynchronously
+4. Consumer updates DynamoDB click count + stores detailed analytics
+
+**Why synchronous for demo:**
+- Simpler implementation (no additional Lambda)
+- Reliable (no data loss from frozen containers)
+- Acceptable latency (industry standard: Bitly ~150ms, TinyURL ~200ms)
+- SQS writes are faster than DynamoDB (10-30ms vs 20-50ms)
+
 **AWS Infrastructure**
 - [x] AWS CDK infrastructure (Python) with DynamoDB tables
 - [x] Lambda function (Spring Boot, 512MB, 10s timeout)
@@ -86,6 +99,78 @@ This project demonstrates:
 - [ ] Scheduled URL activation/deactivation
 - [ ] Webhook notifications for URL events
 
+
+---
+
+## 👥 Target Users & Access Control
+
+### Current Implementation: Internal Tool (Demo)
+
+**Primary Users:** Company employees and internal teams
+- Marketing teams shortening campaign links
+- Sales teams sharing product links  
+- Support teams creating help documentation links
+- Development teams sharing internal resources
+
+**Current State:**
+- ✅ Public API (no authentication required)
+- ✅ All URLs tagged with `userId: "anonymous"`
+- ✅ Basic rate limiting at API Gateway (50 req/s, 100 burst)
+- ⚠️ No user-specific access control
+
+### Production Roadmap: Tiered Access Model
+
+**Phase 1: Internal Authentication (Planned)**
+```
+Employee → AWS Cognito (SSO) → API Gateway Authorizer → Lambda
+```
+
+**Features:**
+- Extract userId from JWT token
+- Tag URLs with authenticated user
+- User-specific endpoints:
+  - `GET /api/v1/urls` - List my URLs
+  - `PATCH /api/v1/urls/{shortCode}` - Update my URLs only
+  - `DELETE /api/v1/urls/{shortCode}` - Delete my URLs only
+- Per-user rate limiting (100 URLs/day)
+- Audit trail (who created what, when)
+
+**Phase 2: Public API with Tiered Access (Future)**
+
+| Feature | Anonymous | Authenticated | Premium |
+|---------|-----------|---------------|----------|
+| Shorten URL | ✅ (10/day) | ✅ (100/day) | ✅ (Unlimited) |
+| Custom alias | ❌ | ✅ | ✅ |
+| Set expiry | ❌ | ✅ | ✅ |
+| View analytics | ❌ | ✅ | ✅ |
+| Update/Delete | ❌ | ✅ (own URLs) | ✅ (own URLs) |
+| API access | ❌ | ✅ | ✅ |
+| Custom domain | ❌ | ❌ | ✅ |
+
+**Implementation:**
+- Anonymous: IP-based rate limiting, CAPTCHA
+- Authenticated: Cognito user pool, API keys
+- Premium: Usage plans, higher quotas
+
+### Security Considerations
+
+**Current (Demo):**
+- ✅ Input validation (URL format, length, malicious patterns)
+- ✅ Reserved keyword blocking
+- ✅ API Gateway throttling
+- ⚠️ No authentication
+- ⚠️ No authorization
+
+**Production Requirements:**
+- [ ] AWS Cognito integration
+- [ ] JWT token validation
+- [ ] Resource ownership checks
+- [ ] Per-user rate limiting
+- [ ] Bot detection (User-Agent analysis)
+- [ ] Abuse reporting mechanism
+- [ ] IP blacklisting
+
+---
 
 ## ✨ Features
 - **Convert long URLs into short URLs**
